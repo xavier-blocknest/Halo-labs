@@ -3,7 +3,7 @@
 // strength sessions' bests: strain, length, calories, heart rate). A best set in the last 14 days
 // wears a glowing "New". Reads only D.training.bests (server/dashboard/bests.ts); every value comes from there.
 
-import type { ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
 const T1 = 'oklch(0.96 0.005 250)', T2 = 'oklch(0.74 0.015 255)', T3 = 'oklch(0.58 0.015 255)'
 const LINE = 'oklch(1 0 0 / 0.07)', HEAD = "'Space Grotesk',system-ui,sans-serif"
@@ -18,6 +18,16 @@ const ICON = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type P = any
+
+// Phones: the tiles become a sideways swipe row (one tile + a peek of the next) with dots, instead of a tall stack.
+const CSS = `
+.pb-dots { display: none; }
+@media (max-width: 760px) {
+  .pb-grid { display: flex !important; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -24px; padding: 0 24px; scroll-padding: 0 24px; }
+  .pb-grid::-webkit-scrollbar { display: none; }
+  .pb-grid > * { flex: 0 0 86%; scroll-snap-align: start; }
+  .pb-dots { display: flex; }
+}`
 type Sport = keyof typeof C
 
 function New({ c }: { c: string }) {
@@ -94,6 +104,7 @@ function Bars({ sport, rows }: { sport: Sport; rows: { k: string; v: string; sub
 }
 
 export function PersonalBests({ pb }: { pb: P }) {
+  const row = useRef<HTMLDivElement>(null), [at, setAt] = useState(0), N = 4
   if (!pb) return null
   const { run, swim, ride, strength } = pb, ss = pb.strengthSessions ?? {}
   // Run: headline = the longest standard race distance with an effort (5K before mile), else the longest run.
@@ -105,6 +116,11 @@ export function PersonalBests({ pb }: { pb: P }) {
   const lifts = [...strength].sort((a: P, b: P) => b.lb - a.lb), liftHero = lifts[0] ?? null
   const liftRows = lifts.slice(1).map((s: P) => ({ k: s.k, v: `${s.v} lb`, sub: s.sub.split(' · ')[0], pct: liftHero ? Math.round(s.lb / liftHero.lb * 100) : 0, b: s }))
   const count = (xs: (P | null)[]) => xs.filter(Boolean).length
+  const onScroll = () => { const el = row.current; if (!el) return; const kids = [...el.children] as HTMLElement[]
+    const x = el.scrollLeft; let best = 0; kids.forEach((k, i) => { if (Math.abs(k.offsetLeft - el.offsetLeft - 24 - x) < Math.abs(kids[best].offsetLeft - el.offsetLeft - 24 - x)) best = i })
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) best = N - 1
+    if (best !== at) setAt(best) }
+  const go = (i: number) => { const el = row.current, k = el?.children[i] as HTMLElement | undefined; if (el && k) el.scrollTo({ left: k.offsetLeft - el.offsetLeft - 24, behavior: 'smooth' }) }
 
   return (
     <section style={{ borderRadius: '18px', background: 'oklch(0.185 0.018 262 / 0.9)', border: `1px solid ${LINE}`, boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.04)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
@@ -112,7 +128,8 @@ export function PersonalBests({ pb }: { pb: P }) {
         <div style={{ fontSize: '14px', fontWeight: 500, fontFamily: HEAD, letterSpacing: '-0.005em', color: T1 }}>Personal bests</div>
         <span style={{ fontSize: '12px', color: T3 }}>Only your recorded workouts · Strava, WHOOP and FitnessAI</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,250px),1fr))', gap: '14px', alignItems: 'start' }}>
+      <style>{CSS}</style>
+      <div ref={row} onScroll={onScroll} className="pb-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,250px),1fr))', gap: '14px', alignItems: 'start' }}>
         <Tile sport="run" title="Run" count={run.efforts.length + count([run.longest])} hero={runHero} heroLabel={runLabel} empty="No runs with distance yet.">
           {pick ? <Chips sport="run" items={[{ k: 'Longest run', b: run.longest }]} /> : null}
           {ladder.length ? <Bars sport="run" rows={ladder} /> : null}
@@ -134,6 +151,11 @@ export function PersonalBests({ pb }: { pb: P }) {
             {ss.n ? <span style={{ fontSize: '11.5px', color: T3 }}>From {ss.n} strength session{ss.n === 1 ? '' : 's'}. Export FitnessAI to see your heaviest lifts here.</span> : null}
           </Tile>
         )}
+      </div>
+      <div className="pb-dots" style={{ justifyContent: 'center', gap: '6px' }}>
+        {Array.from({ length: N }, (_, i) => (
+          <button key={i} onClick={() => go(i)} aria-label={`Show tile ${i + 1}`} style={{ width: i === at ? '18px' : '6px', height: '6px', padding: 0, border: 0, borderRadius: '3px', cursor: 'pointer', background: i === at ? T1 : 'oklch(1 0 0 / 0.18)', transition: 'width .2s' }} />
+        ))}
       </div>
     </section>
   )

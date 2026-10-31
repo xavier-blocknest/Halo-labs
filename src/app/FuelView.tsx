@@ -222,10 +222,13 @@ export function FuelView({ v }: { v: any }) {
             {" "}
             <div style={{"display": "flex", "flexDirection": "column"}}>
               {" "}
+              <div style={{"display": "grid", "gridTemplateColumns": "72px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", "gap": "10px", "padding": "0 0 8px", "fontSize": "11px", "color": "oklch(0.58 0.015 255)"}}>
+                <span>{v.pT.ruleHead?.k}</span><span>{v.pT.ruleHead?.inn}</span><span>{v.pT.ruleHead?.out}</span><span>{v.pT.ruleHead?.lim}</span>
+              </div>
               {(v.protoRules || []).map((pr3: any, _i1: number) => (
                 <Fragment key={_i1}>
                   {" "}
-                  <div style={{"display": "grid", "gridTemplateColumns": "76px minmax(0,1fr) minmax(0,1fr)", "gap": "12px", "padding": "10px 0", "borderTop": "1px solid oklch(1 0 0 / 0.07)", "fontSize": "12.5px", "lineHeight": "1.45"}}>
+                  <div style={{"display": "grid", "gridTemplateColumns": "72px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)", "gap": "10px", "padding": "10px 0", "borderTop": "1px solid oklch(1 0 0 / 0.07)", "fontSize": "12.5px", "lineHeight": "1.45"}}>
                     {" "}
                     <span style={{"color": "oklch(0.96 0.005 250)"}}>
                       {pr3.k}
@@ -233,11 +236,11 @@ export function FuelView({ v }: { v: any }) {
                     <span style={{"color": "oklch(0.78 0.15 160)"}}>
                       {pr3.inn}
                     </span>
+                    <span style={{"color": "oklch(0.7 0.18 25 / 0.9)"}}>
+                      {pr3.out}
+                    </span>
                     <span style={{"color": "oklch(0.58 0.015 255)"}}>
-                      <span style={{"color": "oklch(0.7 0.18 25 / 0.9)"}}>
-                        {pr3.out}
-                      </span>
-                      {" · "}{pr3.lim}
+                      {pr3.lim}
                     </span>
                     {" "}
                   </div>

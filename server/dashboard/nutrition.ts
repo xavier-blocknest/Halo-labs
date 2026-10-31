@@ -78,6 +78,8 @@ export function protocolSummary(today: string) {
   const fr = sec(/food rules/i), ft = fr?.tables[0]
   const ci = { k: 0, inn: col(ft, /^in$/i), out: col(ft, /^out/i), lim: col(ft, /limit/i) }
   const rules = (ft?.rows ?? []).map(r => ({ k: r[ci.k], inn: r[ci.inn] ?? '', out: r[ci.out] ?? '', lim: r[ci.lim] ?? '' }))
+  const hd = (i: number, d: string) => (i >= 0 && ft?.header[i]?.trim()) || d
+  const ruleHead = { k: hd(ci.k, 'Category'), inn: hd(ci.inn, 'In'), out: hd(ci.out, 'Out'), lim: hd(ci.lim, 'Limit') }
   const outs = rules.flatMap(r => /^(none|no change)$/i.test(r.out) ? [] : r.out.split(/,\s*/).map(s => ({ item: s.trim(), category: r.k })))
   const ruleNotes = fr?.paragraphs.filter(x => /^[A-Z][^:]{2,40}:/.test(x)) ?? []
   const labelRule = ruleNotes.find(x => /^label rule/i.test(x)) ?? null
@@ -132,7 +134,7 @@ export function protocolSummary(today: string) {
     summary: p.summary, imported: rec.day,
     targets, targetNotes: sec(/daily targets/i)?.paragraphs ?? [], beforeDays: before.length, beforeFrom: before[0]?.day ?? null, beforeTo: before.at(-1)?.day ?? null, duringDays: during.length, lastLogged: logged.at(-1)?.day ?? null,
     todayLog: logged.find(d => d.day === today) ? { kcal: logged.find(d => d.day === today)!.kcal, satFat: logged.find(d => d.day === today)!.satFatG } : null,
-    apob, goal, decide, rules, outs, ruleNotes, labelRule,
+    apob, goal, decide, rules, ruleHead, outs, ruleNotes, labelRule,
     sample, sampleTotal: total ? { kcal: num(total[sc.kcal] ?? ''), protein: num(total[sc.p] ?? ''), satFat: num(total[sc.sat] ?? '') } : null,
     sampleNotes: sd?.paragraphs ?? [], supplements, notInStack: sec(/supplement/i)?.paragraphs.find(x => /^not in the stack/i.test(x)) ?? null, swaps,
     swapNote: sec(/swap/i)?.paragraphs.find(x => /^keep the calories/i.test(x)) ?? null,

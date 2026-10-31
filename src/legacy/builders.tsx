@@ -440,6 +440,7 @@ function protoData() {
       targetsNote: (P.beforeDays ? `Right column: your average over the last ${P.beforeDays} full logged days before the protocol (${fmtDay(P.beforeFrom)} – ${fmtDay(P.beforeTo)}).` : 'Right column: no logged days before the protocol.')
         + (P.targetNotes.at(-1) ? ' ' + (/^.*?[.!?](?=\s|$)/.exec(P.targetNotes.at(-1))?.[0] ?? '') : ''),
       labelRule: P.labelRule ?? '',
+      ruleHead: P.ruleHead ?? { k: 'Category', inn: 'In', out: 'Out', lim: 'Limit' },
       ifThen: P.ifThen.map(x => x.when + ': ' + x.then).join(' ') + (voidS ? ' ' + voidS : '') + comp,
     },
   }
@@ -569,6 +570,9 @@ function dietData() {
       _s: out ? 'out' : over ? 'over' : locked ? 'locked' : 'free',
     }
   })
+  // Available first, then used up (locked / over the limit), then blocked by the protocol's Out list.
+  const rank = { free: 0, locked: 1, over: 1, out: 2 }
+  diet.sort((a, b) => rank[a._s] - rank[b._s])
   const n = (s) => diet.filter(d => d._s === s).length
   const parts = [n('free') + ' available', n('locked') ? n('locked') + ' locked' : null, n('over') ? n('over') + ' over' : null, n('out') ? n('out') + ' out for the protocol' : null].filter(Boolean)
   return { dietOn: true, diet, dietSum: parts.join(' · '), dietSumC: n('over') ? R : T3, dietNote: n('out') ? ' Items on the protocol\'s Out list are paused until the retest.' : '' }
