@@ -52,11 +52,11 @@ Open it any time at **http://localhost:8787** (or `./halo open`).
 | Backblaze B2 *(optional)* | nightly encrypted off-site backup | [backblaze.com](https://www.backblaze.com/cloud-storage) → a private bucket + application key | ~free at this size |
 
 **WHOOP app settings:** scopes `read:recovery read:cycles read:workout read:sleep read:body_measurement` and `offline`;
-redirect URL `http://127.0.0.1:8787/oauth/whoop/callback` (WHOOP may not accept `localhost`; Halo Labs forwards it).
+redirect URL `http://localhost:8787/oauth/whoop/callback`.
 **Strava app settings:** Authorization Callback Domain `localhost`.
 Then **Settings → Sources → Connect**. History backfills in the background.
 
-(Settings → APIs → WHOOP and Strava show exactly what to paste, with a Copy button. If WHOOP refuses that address too, do step 4 first and use the
+(Settings → APIs → WHOOP and Strava show exactly what to paste, with a Copy button. If WHOOP ever refuses that address, do step 4 first and use the
 `https://…ts.net` address instead.)
 
 Note on Strava: its API terms limit storing data and using it with AI. Halo Labs stores your Strava data and lets the
