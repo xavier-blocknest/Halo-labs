@@ -2035,6 +2035,11 @@ export function View({ v }: { v: any }) {
                 ))}
                 {" "}
               </div>
+              {v.bMore ? (
+                <button onClick={v.bMore.go} style={{"alignSelf": "flex-start", "cursor": "pointer", "fontFamily": "'IBM Plex Sans',system-ui,sans-serif", "fontSize": "12.5px", "padding": "7px 14px", "borderRadius": "9px", "border": "1px solid oklch(1 0 0 / 0.12)", "background": "transparent", "color": "oklch(0.82 0.13 210)"}}>
+                  {v.bMore.label}
+                </button>
+              ) : null}
             </section>
           </div>
         </>) : null}

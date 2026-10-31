@@ -721,7 +721,7 @@ const flagC = f => f === 'H' ? R : f === 'L' ? W : T1, dotC = f => f === 'H' ? R
 
 function blood() {
   const T = this.props.D.tests, draws = T?.draws ?? []
-  if (!draws.length) return { bNodes: [], bCmpOpts: [], bFilterOpts: [], bPanels: [], bSelLabel: '', bCmpLabel: '', bChgLabel: '', bSummary: 'No lab reports yet', bFlagged: [] }
+  if (!draws.length) return { bNodes: [], bCmpOpts: [], bFilterOpts: [], bMore: null, bPanels: [], bSelLabel: '', bCmpLabel: '', bChgLabel: '', bSummary: 'No lab reports yet', bFlagged: [] }
   const ids = draws.map(d => d.id), sel = ids.includes(this.state.bDate) ? this.state.bDate : ids.at(-1)
   const cmp = this.state.bCmp === undefined ? (ids.length > 1 ? ids.at(-2) : null) : (ids.includes(this.state.bCmp) && this.state.bCmp !== sel ? this.state.bCmp : null)
   const flt = this.state.bFilter, lab = id => draws.find(d => d.id === id)?.label ?? ''
@@ -738,14 +738,17 @@ function blood() {
       p: s?.v != null ? posOf(s.v, m.low, m.high) : '0%', po: s?.v != null ? 1 : 0, pc: c?.v != null ? posOf(c.v, m.low, m.high) : '0%', pco: c?.v != null ? 1 : 0,
       dot: s ? dotC(s.f) : T3, trend: trend(m) } })
   const order = ['Lipids', 'Iron & blood', 'Metabolic', 'Liver & kidney', 'Hormones', 'Inflammation & vitamins', 'Other']
-  const shown = (flt === 'flagged' ? rows.filter(r => r.flag) : rows).sort((a, b) => order.indexOf(a.panel) - order.indexOf(b.panel))
+  // Default view: only the out-of-range markers (the full list is long); everything when nothing is flagged.
+  const onlyFlagged = flt === 'flagged' && rows.some(r => r.flag)
+  const shown = (onlyFlagged ? rows.filter(r => r.flag) : rows).sort((a, b) => order.indexOf(a.panel) - order.indexOf(b.panel))
   const panels = []
   shown.forEach(r => { let p = panels.find(x => x.name === r.panel); if (!p) { p = { name: r.panel, rows: [] }; panels.push(p) } p.rows.push(r) })
   const flagged = rows.filter(r => r.flag), tested = rows.filter(r => r.po).length
   return {
     bNodes: this.nodes(draws.map(d => [d.id, d.label, d.year]), sel, cmp, id => this.setState(s => ({ bDate: id, bCmp: s.bCmp === id ? null : s.bCmp }))),
     bCmpOpts: this.seg([['none', 'None']].concat(draws.filter(d => d.id !== sel).map(d => [d.id, d.label])), cmp || 'none', id => this.setState({ bCmp: id === 'none' ? null : id })),
-    bFilterOpts: this.seg([['all', 'All markers'], ['flagged', 'Out of range']], flt, id => this.setState({ bFilter: id })),
+    bFilterOpts: flagged.length ? this.seg([['flagged', `Out of range · ${flagged.length}`], ['all', `All · ${tested}`]], flt, id => this.setState({ bFilter: id })) : [],
+    bMore: onlyFlagged ? { label: `Show all ${tested} markers`, go: () => this.setState({ bFilter: 'all' }) } : flt === 'all' && flagged.length ? { label: 'Show only out of range', go: () => this.setState({ bFilter: 'flagged' }) } : null,
     bPanels: panels, bSelLabel: lab(sel), bCmpLabel: cmp ? lab(cmp) : '', bChgLabel: cmp ? 'Change' : '',
     bSummary: flagged.length + ' of ' + tested + ' out of range on ' + lab(sel), bFlagged: flagged.map(r => ({ name: r.name, v: r.v, c: dotC(r.flag) })),
   }

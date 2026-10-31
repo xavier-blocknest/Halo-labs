@@ -1,12 +1,20 @@
 // Roadmap page layout from the Claude Design prototype (v4), converted by scripts/dc-to-jsx.py; values bound to data.
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { RoadmapPlanner } from './RoadmapPlanner'
 import './roadmap.css'
 
 const HOVER = ""
 
+const Chev = ({ open }: { open: boolean }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="oklch(0.58 0.015 255)" strokeWidth="2" strokeLinecap="round" aria-hidden style={{ flex: 'none', transition: 'transform .2s', transform: open ? 'rotate(90deg)' : 'none' }}><path d="M9 6l6 6-6 6" /></svg>
+)
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function RoadmapView({ v }: { v: any }) {
+  // Reference cards (75 Hard, bike setup, run ladder, race prep) start folded; the header keeps its one-line summary.
+  // Which ones are open is remembered on this device.
+  const [open, setOpen] = useState<Record<string, boolean>>(() => { try { return JSON.parse(localStorage.getItem('im4-rmfold') || '{}') } catch { return {} } })
+  const tog = (k: string) => setOpen(o => { const n = { ...o, [k]: !o[k] }; try { localStorage.setItem('im4-rmfold', JSON.stringify(n)) } catch { /* private mode */ } return n })
   return (
     <>
       <style>{HOVER}</style>
@@ -362,14 +370,16 @@ export function RoadmapView({ v }: { v: any }) {
             </section>
             {(v.rules || []).length ? (
             <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
-              <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
+              <div role="button" tabIndex={0} aria-expanded={!!open.hard} onClick={() => tog('hard')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog('hard') } }} style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap", "cursor": "pointer"}}>
                 <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
                   {"Sustainable 75 Hard"}
                 </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
                 <span style={{"fontSize": "12px", "color": "oklch(0.78 0.15 160)"}}>
                   {v.rmT.streak}
                 </span>
-              </div>
+                <Chev open={!!open.hard} /></span>
+            </div>{open.hard ? (<>
               {" "}
               <div style={{"display": "flex", "flexDirection": "column", "gap": "10px"}}>
                 {" "}
@@ -387,22 +397,25 @@ export function RoadmapView({ v }: { v: any }) {
                 ))}
                 {" "}
               </div>
-            </section>
+            </>) : null}
+          </section>
             ) : null}
           </div>
         </div>
         {" "}
-        <div style={{"display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(min(100%,340px),1fr))", "gap": "16px", "alignItems": "stretch"}}>
+        <div style={{"display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(min(100%,340px),1fr))", "gap": "16px", "alignItems": "start"}}>
           {v.hasBike ? (
           <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
-            <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
+            <div role="button" tabIndex={0} aria-expanded={!!open.bike} onClick={() => tog('bike')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog('bike') } }} style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap", "cursor": "pointer"}}>
               <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
                 {"Bike setup"}
               </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
               <span style={{"fontSize": "12px", "color": "oklch(0.7 0.18 25)"}}>
                 {v.rmT.bikePriority}
               </span>
-            </div>
+              <Chev open={!!open.bike} /></span>
+            </div>{open.bike ? (<>
             {" "}
             <div style={{"display": "flex", "flexDirection": "column"}}>
               {" "}
@@ -435,18 +448,21 @@ export function RoadmapView({ v }: { v: any }) {
             <span style={{"fontSize": "12px", "color": "oklch(0.58 0.015 255)", "lineHeight": "1.5"}}>
               {v.rmT.bikeNote}
             </span>
+          </>) : null}
           </section>
           ) : null}
           {v.hasLadder ? (
           <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
-            <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
+            <div role="button" tabIndex={0} aria-expanded={!!open.ladder} onClick={() => tog('ladder')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog('ladder') } }} style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap", "cursor": "pointer"}}>
               <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
                 {"Run ladder"}
               </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
               <span style={{"fontSize": "12px", "color": "oklch(0.58 0.015 255)"}}>
                 {v.rmT.comfortable}
               </span>
-            </div>
+              <Chev open={!!open.ladder} /></span>
+            </div>{open.ladder ? (<>
             {" "}
             <div style={{"display": "flex", "flexDirection": "column", "gap": "8px"}}>
               {" "}
@@ -486,6 +502,7 @@ export function RoadmapView({ v }: { v: any }) {
             <span style={{"fontSize": "12px", "color": "oklch(0.58 0.015 255)"}}>
               {v.rmT.ladderNote}
             </span>
+          </>) : null}
           </section>
           ) : null}
         </div>
@@ -612,11 +629,12 @@ export function RoadmapView({ v }: { v: any }) {
         </div>
         {v.hasPrep ? (
         <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "24px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
-          <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
+          <div role="button" tabIndex={0} aria-expanded={!!open.prep} onClick={() => tog('prep')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog('prep') } }} style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap", "cursor": "pointer"}}>
             <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
               {"Race prep"}
             </div>
-            <div style={{"display": "flex", "gap": "2px", "padding": "3px", "borderRadius": "10px", "background": "oklch(1 0 0 / 0.04)", "border": "1px solid oklch(1 0 0 / 0.07)", "flexWrap": "wrap"}}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
+            {open.prep ? (<div onClick={e => e.stopPropagation()} style={{"display": "flex", "gap": "2px", "padding": "3px", "borderRadius": "10px", "background": "oklch(1 0 0 / 0.04)", "border": "1px solid oklch(1 0 0 / 0.07)", "flexWrap": "wrap"}}>
               {(v.prepTabs || []).map((o: any, _i1: number) => (
                 <Fragment key={_i1}>
                   <button onClick={o.pick} style={{"border": "0", "cursor": "pointer", "fontFamily": "'IBM Plex Sans',system-ui,sans-serif", "fontSize": "12px", "padding": "6px 12px", "borderRadius": "7px", "background": o.bg, "color": o.fg, "transition": "background .2s,color .2s"}}>
@@ -624,8 +642,9 @@ export function RoadmapView({ v }: { v: any }) {
                   </button>
                 </Fragment>
               ))}
-            </div>
-          </div>
+            </div>) : null}
+            <Chev open={!!open.prep} /></span>
+            </div>{open.prep ? (<>
           {" "}
           <div style={{"display": "flex", "flexWrap": "wrap", "gap": "24px"}}>
             {" "}
@@ -674,7 +693,8 @@ export function RoadmapView({ v }: { v: any }) {
             </div>
             {" "}
           </div>
-        </section>
+        </>) : null}
+          </section>
         ) : null}
       </div>
       {v.rmEditOn ? (<RoadmapPlanner today={v.D.today} onClose={v.rmEditClose} />) : null}
