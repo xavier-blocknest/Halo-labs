@@ -1,5 +1,6 @@
 // Training page · "Personal bests": one tile per sport (run, swim, ride, strength), each with a headline best, its
-// other bests, and small bars (run: pace at each distance; strength: heaviest set). A best set in the last 14 days
+// other bests, and small bars (run: pace at each distance; strength: heaviest set, or without FitnessAI sets the
+// strength sessions' bests: strain, length, calories, heart rate). A best set in the last 14 days
 // wears a glowing "New". Reads only D.training.bests (server/dashboard/bests.ts); every value comes from there.
 
 import type { ReactNode } from 'react'
@@ -94,7 +95,7 @@ function Bars({ sport, rows }: { sport: Sport; rows: { k: string; v: string; sub
 
 export function PersonalBests({ pb }: { pb: P }) {
   if (!pb) return null
-  const { run, swim, ride, strength } = pb
+  const { run, swim, ride, strength } = pb, ss = pb.strengthSessions ?? {}
   // Run: headline = the longest standard race distance with an effort (5K before mile), else the longest run.
   const pick = ['Marathon', 'Half marathon', '10K', '5K', '1 mile'].map(k => run.efforts.find((e: P) => e.k === k)).find(Boolean)
   const runHero = pick ?? run.longest, runLabel = pick ? `Fastest ${pick.k}` : 'Longest run'
@@ -123,9 +124,16 @@ export function PersonalBests({ pb }: { pb: P }) {
         <Tile sport="ride" title="Ride" count={count([ride.longest, ride.fastest, ride.climb])} hero={ride.longest} heroLabel="Longest ride" empty="No rides with distance yet.">
           <Chips sport="ride" items={[{ k: 'Fastest average', b: ride.fastest }, { k: 'Most climbing', b: ride.climb }]} />
         </Tile>
-        <Tile sport="lift" title="Strength" count={strength.length} hero={liftHero} heroLabel={liftHero ? `${liftHero.k} · heaviest set` : ''} empty="No FitnessAI sets yet.">
-          {liftRows.length ? <Bars sport="lift" rows={liftRows} /> : null}
-        </Tile>
+        {strength.length ? (
+          <Tile sport="lift" title="Strength" count={strength.length} hero={liftHero} heroLabel={liftHero ? `${liftHero.k} · heaviest set` : ''} empty="">
+            {liftRows.length ? <Bars sport="lift" rows={liftRows} /> : null}
+          </Tile>
+        ) : (
+          <Tile sport="lift" title="Strength" count={count([ss.strain, ss.longest, ss.calories, ss.maxHr])} hero={ss.strain ?? ss.longest} heroLabel={ss.strain ? 'Highest strain' : 'Longest session'} empty="No strength sessions yet.">
+            <Chips sport="lift" items={[...(ss.strain ? [{ k: 'Longest session', b: ss.longest }] : []), { k: 'Most calories', b: ss.calories }, { k: 'Highest heart rate', b: ss.maxHr }]} />
+            {ss.n ? <span style={{ fontSize: '11.5px', color: T3 }}>From {ss.n} strength session{ss.n === 1 ? '' : 's'}. Export FitnessAI to see your heaviest lifts here.</span> : null}
+          </Tile>
+        )}
       </div>
     </section>
   )

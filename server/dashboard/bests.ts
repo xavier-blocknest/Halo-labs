@@ -4,7 +4,9 @@
 // - Swim and ride: whole-activity bests (Strava has no best efforts for them): longest, fastest pace or speed over a
 //   minimum distance, and (rides) most climbing. Rides look at WHOOP sessions and Strava rides together: sessions skip
 //   Strava rides so totals don't count a ride twice, but a best is a single maximum, so both can be candidates.
-// - Strength: the heaviest set of each of the most-done FitnessAI exercises (from FitnessAI exports).
+// - Strength: the heaviest set of each of the most-done FitnessAI exercises (from FitnessAI exports). Without FitnessAI
+//   sets (strength from WHOOP or Strava), session bests instead: highest strain, longest session, most calories and
+//   highest heart rate of the strength sessions (WHOOP has no weights or reps).
 import { readRecords } from '../db.ts'
 import type { LiftSet, StravaActivity } from '../model.ts'
 import type { Session } from './sessions.ts'
@@ -63,6 +65,18 @@ export function personalBests(acts: Session[], day: string) {
     .sort((a, b) => b.days - a.days || b.top.lb - a.top.lb).slice(0, LIFTS_SHOWN)
     .map(({ ex, days, top }) => ({ k: ex, lb: top.lb, ...best(String(top.lb), 'lb', `× ${top.reps} · ${days} session${days === 1 ? '' : 's'}`, { day: top.day, name: ex }) }))
 
+  // Strength sessions (whichever app is the strength source; WHOOP adds strain, calories and heart rate).
+  const liftSessions = acts.filter(a => a.sport === 'strength')
+  const top = (key: 'strain' | 'calories' | 'maxHr' | 'movingS') => liftSessions.filter(a => (a[key] ?? 0) > 0).sort((a, b) => b[key]! - a[key]! || a.day.localeCompare(b.day))[0]
+  const sStrain = top('strain'), sLong = top('movingS'), sCal = top('calories'), sHr = top('maxHr')
+  const strengthSessions = {
+    strain: sStrain ? best(String(sStrain.strain), 'strain', clock(sStrain.movingS ?? 0), sStrain) : null,
+    longest: sLong ? best(clock(sLong.movingS!), '', sLong.strain != null ? `strain ${sLong.strain}` : '', sLong) : null,
+    calories: sCal ? best(Math.round(sCal.calories!).toLocaleString(), 'kcal', '', sCal) : null,
+    maxHr: sHr ? best(String(Math.round(sHr.maxHr!)), 'bpm', '', sHr) : null,
+    n: liftSessions.length,
+  }
+
   return {
     run: { efforts, pending, longest: longestRun ? best(String(r1(longestRun.distanceM! / MI)), 'mi', clock(longestRun.movingS ?? longestRun.elapsedS ?? 0), longestRun) : null },
     swim: {
@@ -74,6 +88,6 @@ export function personalBests(acts: Session[], day: string) {
       fastest: fastRide ? best(String(r1(fastRide.distanceM! / MI / (fastRide.movingS! / 3600))), 'mph', `over ${r1(fastRide.distanceM! / MI)} mi`, fastRide) : null,
       climb: climbRide ? best(Math.round(climbRide.elevGainM! / FT).toLocaleString(), 'ft', `in ${r1(climbRide.distanceM! / MI)} mi`, climbRide) : null,
     },
-    strength,
+    strength, strengthSessions,
   }
 }
