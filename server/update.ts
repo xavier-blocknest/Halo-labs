@@ -4,18 +4,25 @@
 // page polls the status until it reports the new version). An update that changes package-lock.json or the
 // Dockerfile can't be applied from inside the running app: the status says so, and ./halo update does it on the Mac.
 // Needs git in the image (Dockerfile). Private repository: a GitHub token in Settings → APIs → GitHub.
+// Automatic checks can be switched off in Settings → Updates (secret `update-auto` = false), e.g. when the owner has
+// changed the code himself: then nothing is fetched in the background and the banner stays hidden; "Check now" still works.
 import { execFile } from 'node:child_process'
+import { getSecret, setSecret } from './db.ts'
 import { setting } from './settings.ts'
 
 const CHECK_EVERY_MS = 15 * 60_000 // a quiet git fetch; also started when the page asks and the last check is older
 const BRANCH = 'main'
+export const AUTO_KEY = 'update-auto'
+/** Automatic update checks: on unless switched off in Settings → Updates. */
+export const autoChecks = () => getSecret<boolean>(AUTO_KEY) !== false
+export function setAutoChecks(on: boolean) { setSecret(AUTO_KEY, on ? null : false) }
 
 export type UpdateStatus = {
   current: string | null; latest: string | null; behind: number; changes: string[]
-  checkedAt: string | null; error: string | null; updating: boolean; terminal: boolean
+  checkedAt: string | null; error: string | null; updating: boolean; terminal: boolean; auto: boolean
 }
 let root = ''
-let st: UpdateStatus = { current: null, latest: null, behind: 0, changes: [], checkedAt: null, error: null, updating: false, terminal: false }
+let st: UpdateStatus = { current: null, latest: null, behind: 0, changes: [], checkedAt: null, error: null, updating: false, terminal: false, auto: true }
 
 function git(args: string[], timeout = 60_000): Promise<string> {
   const token = setting('GITHUB_TOKEN')
@@ -36,12 +43,12 @@ function clean(msg: string) {
 /** The cached status, with the running version and the count of new commits read fresh from the local clone (no
  *  network): they change when an update lands, possibly as a merge commit, and the server restarts. */
 export async function updateStatus() {
-  if (!checking && (!st.checkedAt || Date.now() - Date.parse(st.checkedAt) > CHECK_EVERY_MS)) void checkForUpdate() // in the background
+  if (autoChecks() && !checking && (!st.checkedAt || Date.now() - Date.parse(st.checkedAt) > CHECK_EVERY_MS)) void checkForUpdate() // in the background
   try {
     const [current, behind] = await Promise.all([git(['rev-parse', '--short', 'HEAD']), git(['rev-list', '--count', `HEAD..origin/${BRANCH}`]).catch(() => String(st.behind))])
     st = { ...st, current, behind: Number(behind) || 0, ...(Number(behind) ? {} : { changes: [] }) }
   } catch (e) { if (!st.error) st = { ...st, error: (e as Error).message } }
-  return st
+  return { ...st, auto: autoChecks() }
 }
 
 let checking: Promise<UpdateStatus> | null = null
@@ -61,7 +68,7 @@ async function fetchAndCompare() {
   } catch (e) {
     st = { ...st, checkedAt: new Date().toISOString(), error: (e as Error).message }
   }
-  return st
+  return { ...st, auto: autoChecks() }
 }
 
 /** Merge origin/main into the code folder. Refuses when the folder has uncommitted edits, and backs out of a merge
@@ -89,6 +96,6 @@ export async function applyUpdate() {
 
 export function startUpdateChecks(dir: string) {
   root = dir
-  setTimeout(() => void checkForUpdate(), 30_000)
-  setInterval(() => void checkForUpdate(), CHECK_EVERY_MS).unref()
+  setTimeout(() => { if (autoChecks()) void checkForUpdate() }, 30_000)
+  setInterval(() => { if (autoChecks()) void checkForUpdate() }, CHECK_EVERY_MS).unref()
 }

@@ -98,6 +98,8 @@ It's private to your Tailscale account: nobody else can reach it. The Mac has to
 **Updates:** within about 15 minutes of a new version of Halo Labs coming out, a banner at the top of the page offers **Update now** (also in
 Settings → Updates). The page reloads by itself when it's done; the × hides the banner until the next version. The rare update that installs new parts says to run
 `./halo update` in Terminal instead. If the Halo Labs repository is private, add a GitHub token in Settings → APIs → GitHub.
+Changed the code yourself and don't want reminders? Switch off **Check for updates automatically** in Settings → Updates: no
+banner and no background checks; **Check now** there still works whenever you want an update.
 
 Halo Labs keeps syncing while the browser is closed, as long as the Mac is awake and Docker is running. While the Mac
 sleeps, syncing pauses and catches up when it wakes.

@@ -25,7 +25,7 @@ import { importUpload, initImports, scanInbox, startInboxWatcher } from './impor
 import { authorizeUrl, disconnect, handleCallback, isConfigured, isConnected, onLocalhost, publicUrl, redirectUri, type Provider } from './oauth.ts'
 import { isSyncing, startScheduler, syncIfStale, syncNow } from './sync.ts'
 import { listSettings, onSettingsChange, saveSettings, setting } from './settings.ts'
-import { applyUpdate, checkForUpdate, startUpdateChecks, updateStatus } from './update.ts'
+import { applyUpdate, AUTO_KEY, checkForUpdate, setAutoChecks, startUpdateChecks, updateStatus } from './update.ts'
 import { TZ } from './model.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -384,7 +384,7 @@ async function wipeAll(req: IncomingMessage, res: ServerResponse) {
   const { confirm, keys, passkeys } = JSON.parse(await readBody(req) || '{}') as { confirm?: string; keys?: boolean; passkeys?: boolean }
   if (confirm !== 'DELETE') throw new AuthError('Type DELETE to confirm.')
   if (isSyncing('whoop') || isSyncing('strava')) throw new AuthError('A sync is running. Try again in a minute.')
-  wipeData(['settings', 'auth:idleMinutes', 'recovery:downloaded', ...(passkeys === true ? [] : ['upload-tokens']), ...(keys === true ? [] : [SOURCES_KEY])])
+  wipeData(['settings', 'auth:idleMinutes', 'recovery:downloaded', ...(passkeys === true ? [] : ['upload-tokens']), ...(keys === true ? [] : [SOURCES_KEY, AUTO_KEY])])
   if (keys === true) saveSettings(Object.fromEntries(listSettings().map(r => [r.id, '']))) // through settings.ts, so its listeners hear it
   forgetHistory() // resets the coach memory's in-process cache
   for (const dir of [join(ROOT, 'data', 'imports'), join(ROOT, 'inbox')])
@@ -599,6 +599,11 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     if (url.pathname === '/api/roadmap/edits' && req.method === 'PUT') return await saveRoadmapEdits(req, res)
     if (url.pathname === '/api/update/status') return send(res, 200, await updateStatus())
     if (url.pathname === '/api/update/check' && req.method === 'POST') return send(res, 200, await checkForUpdate())
+    if (url.pathname === '/api/update/auto' && req.method === 'PUT') {
+      const { on } = JSON.parse(await readBody(req)) as { on?: unknown }
+      if (typeof on !== 'boolean') return send(res, 400, { error: 'on must be true or false.' })
+      setAutoChecks(on); return send(res, 200, await updateStatus())
+    }
     if (url.pathname === '/api/update' && req.method === 'POST') {
       try { return send(res, 200, await applyUpdate()) } catch (e) { return send(res, 400, { error: (e as Error).message }) }
     }
