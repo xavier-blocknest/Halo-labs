@@ -115,6 +115,7 @@ Edits go live by themselves (no rebuild). The folder is a git repository, so eve
 | Coach says it's offline | Settings → APIs → Claude → Test (key wrong, or no credit left) |
 | Voice doesn't work | Settings → APIs → ElevenLabs → Test; allow the microphone in the browser |
 | WHOOP / Strava stopped syncing | Settings → Sources shows the error; Disconnect and Connect again |
+| Settings → Updates says GitHub refused access | The repository is private: add a GitHub token in Settings → APIs → GitHub (read access to the repository's Contents) |
 | Want to start over | Settings → **Delete all data** (bottom of the page): clears all your data and reopens the setup guide. Tick the boxes to also delete API keys and settings, or passkeys (you get a new setup code) |
 | New Mac or broken disk | see [docs/operations.md](docs/operations.md) → Moving or restoring |
 
