@@ -6,7 +6,7 @@ let installed = false
 export const READ_ONLY = 'This is sample data, so nothing is saved. Set up Halo Labs to start with your own.'
 
 // Writes that stay allowed: the coach and voice (they only answer), setup itself, and error reports.
-const ALLOWED = /^\/(api\/(complete|tts|transcribe|onboarding|settings|client-error)|auth\/)/
+const ALLOWED = /^\/(api\/(complete|tts|transcribe|onboarding|settings|client-error|update)|auth\/)/
 
 export const isSample = () => on
 

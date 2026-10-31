@@ -18,6 +18,8 @@ export const SETTINGS = [
   { id: 'WHOOP_CLIENT_SECRET', group: 'WHOOP', label: 'Client secret', secret: true, hint: '' },
   { id: 'STRAVA_CLIENT_ID', group: 'Strava', label: 'Client ID', secret: false, hint: 'strava.com/settings/api → your app.' },
   { id: 'STRAVA_CLIENT_SECRET', group: 'Strava', label: 'Client secret', secret: true, hint: '' },
+  { id: 'GITHUB_TOKEN', group: 'GitHub (updates)', label: 'Access token', secret: true, placeholder: 'github_pat_…',
+    hint: 'Only needed if the Halo Labs repository is private: a fine-grained token with read access to its Contents.' },
   { id: 'B2_KEY_ID', group: 'Backblaze B2 (optional off-site backups)', label: 'Key ID', secret: false, hint: 'Backblaze → Application Keys. Leave empty to skip off-site backups.' },
   { id: 'B2_APP_KEY', group: 'Backblaze B2 (optional off-site backups)', label: 'Application key', secret: true, hint: '' },
   { id: 'B2_BUCKET', group: 'Backblaze B2 (optional off-site backups)', label: 'Bucket name', secret: false, placeholder: 'HaloLabs', hint: 'A private bucket.' },

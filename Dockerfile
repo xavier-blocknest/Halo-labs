@@ -3,9 +3,9 @@
 # (scripts/start.sh watches both the server and the browser code). The copy below makes the image work on its own too.
 FROM node:24-bookworm-slim
 
-# pdftotext (lab, DEXA and VO₂ PDFs), unzip (zipped exports), tar (backups)
+# pdftotext (lab, DEXA and VO₂ PDFs), unzip (zipped exports), tar (backups), git (Settings → Updates)
 RUN apt-get update \
- && apt-get install -y --no-install-recommends poppler-utils unzip tar ca-certificates \
+ && apt-get install -y --no-install-recommends poppler-utils unzip tar git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

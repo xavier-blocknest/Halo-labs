@@ -155,3 +155,23 @@
 .dp .wipe-opt { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; cursor: pointer; }
 .dp .wipe-opt input { margin-top: 3px; accent-color: oklch(0.7 0.18 25); }
 .dp .wipe-opt .hint { display: inline; }
+
+/* New-version banner (Update.tsx): a pill at the top of the dashboard, in the accent color. */
+.upd-bar {
+  position: fixed; z-index: 9000; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100vw - 24px); padding: 8px 8px 8px 16px; border-radius: 18px;
+  font-family: var(--font-body); font-size: 13px; color: var(--t1); background: oklch(0.2 0.03 230 / 0.94);
+  border: 1px solid oklch(0.82 0.13 210 / 0.55); box-shadow: 0 12px 40px -10px oklch(0 0 0 / 0.6); backdrop-filter: blur(10px);
+}
+.upd-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: oklch(0.82 0.13 210); box-shadow: 0 0 10px oklch(0.82 0.13 210 / 0.8); }
+.upd-text { min-width: 0; display: flex; flex-direction: column; color: var(--t2); }
+.upd-text > span:not(.upd-err) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.upd-text b { color: var(--t1); font-weight: 600; }
+.upd-err { font-size: 12px; color: oklch(0.8 0.12 60); }
+.upd-bar button { flex: none; font: inherit; font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 999px; cursor: pointer; border: 0; }
+.upd-go { color: oklch(0.18 0.03 230); background: oklch(0.82 0.13 210); }
+.upd-go:disabled { opacity: 0.7; cursor: default; }
+.upd-later { color: var(--t2); background: transparent; }
+.upd-later:hover { color: var(--t1); }
+.upd-list { margin: 4px 0 12px 18px; font-size: 13px; color: var(--t2); display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 600px) { .upd-text > span:not(.upd-err) { display: none; } .upd-bar { padding-left: 12px; } }

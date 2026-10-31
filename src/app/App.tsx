@@ -4,6 +4,7 @@ import { hydrateSharedState } from '../sync'
 import { setSample } from '../sampleMode'
 import './app.css'
 import { LockScreen } from './LockScreen'
+import { UpdateBanner } from './Update'
 
 type DashboardData = { today: string } & Record<string, unknown>
 type Auth = { authenticated: boolean; setup: boolean; idleMinutes: number }
@@ -126,6 +127,7 @@ export function App() {
   return (
     <Suspense fallback={wait}>
       <Dashboard key={sample ? 'sample' : 'real'} D={D} onLock={lock} />
+      {!sample && <UpdateBanner />}
       {sample && <SampleBanner onSetup={async () => { await putOnboarding({ done: false }); setStage('setup') }} />}
     </Suspense>
   )

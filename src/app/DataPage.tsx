@@ -9,6 +9,7 @@ import { Passkeys } from './Passkeys'
 import { RecoveryKit } from './RecoveryKit'
 import { UploadTokens } from './UploadTokens'
 import { DeleteAll } from './DeleteAll'
+import { UpdatesCard } from './Update'
 import { Uploader } from './Uploader'
 
 // Source registry (spec section 03). staleDays: when data this old counts as stale (spec's proposed thresholds).
@@ -127,6 +128,7 @@ export function DataPage({ embedded = false }: { embedded?: boolean }) {
           </ul>
         </FoldCard>
       )}
+      <UpdatesCard />
       <DeleteAll />
     </main>
   )

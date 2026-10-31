@@ -110,6 +110,14 @@ case "${1:-help}" in
     case "$yn" in y|Y|yes) docker compose exec -T halolabs node server/auth-reset.ts && docker compose restart halolabs >/dev/null && wait_up && setup_code ;; *) say "Nothing changed." ;; esac ;;
   phone) need_docker; cmd_phone ;;
   shell) need_docker; docker compose exec halolabs sh ;;
+  update)
+    need_docker
+    git diff --quiet || die "The code has changes that aren't committed yet. Ask Claude to commit them first."
+    old=$(git rev-parse HEAD)
+    git pull --ff-only || die "Couldn't update automatically (this copy has its own changes). Ask Claude to merge origin/main."
+    if [ "$old" = "$(git rev-parse HEAD)" ]; then say "Already up to date."; exit 0; fi
+    if git diff --name-only "$old" HEAD | grep -qx Dockerfile; then docker compose up -d --build; else docker compose restart; fi
+    wait_up; say "Updated to $(git log -1 --format='%h %s'). Running at $(url)" ;;
   check) need_docker; docker compose exec -T halolabs sh -c 'npx tsc -b && npx tsc -p tsconfig.server.json && npx vite build --logLevel warn' && say "Typecheck and build OK" ;;
   help|*)
     cat <<'EOF'
@@ -123,6 +131,7 @@ Halo Labs: ./halo <command>
   reset-passkeys  remove all passkeys (when every device is lost), then print a new setup code
   phone           use Halo Labs from an iPhone through Tailscale (HTTPS address; needs new passkeys)
   check           typecheck and build inside the container (after code changes)
+  update          get the latest version of Halo Labs (Settings shows when there is one)
   rebuild         rebuild the Docker image (after changing the Dockerfile)
   shell           a shell inside the container
 EOF

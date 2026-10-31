@@ -23,6 +23,7 @@ import { importUpload, initImports, scanInbox, startInboxWatcher } from './impor
 import { authorizeUrl, disconnect, handleCallback, isConfigured, isConnected, redirectUri, type Provider } from './oauth.ts'
 import { isSyncing, startScheduler, syncIfStale, syncNow } from './sync.ts'
 import { listSettings, onSettingsChange, saveSettings, setting } from './settings.ts'
+import { applyUpdate, checkForUpdate, startUpdateChecks, updateStatus } from './update.ts'
 import { TZ } from './model.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -590,6 +591,11 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     const ut = url.pathname.match(/^\/api\/upload-tokens\/([0-9a-f]{12})$/)
     if (ut && req.method === 'DELETE') return send(res, revokeUploadToken(ut[1]) ? 200 : 404, { ok: true })
     if (url.pathname === '/api/roadmap/edits' && req.method === 'PUT') return await saveRoadmapEdits(req, res)
+    if (url.pathname === '/api/update/status') return send(res, 200, await updateStatus())
+    if (url.pathname === '/api/update/check' && req.method === 'POST') return send(res, 200, await checkForUpdate())
+    if (url.pathname === '/api/update' && req.method === 'POST') {
+      try { return send(res, 200, await applyUpdate()) } catch (e) { return send(res, 400, { error: (e as Error).message }) }
+    }
     if (url.pathname === '/api/wipe' && req.method === 'POST') return await wipeAll(req, res)
     if (url.pathname === '/api/roadmap/doc' && req.method === 'GET') return send(res, 200, { doc: roadmapDoc()?.doc ?? null })
     if (url.pathname === '/api/roadmap/doc' && req.method === 'PUT') return await saveRoadmapDoc(req, res)
@@ -639,6 +645,7 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
   console.log(`Halo Labs on http://${HOST}:${PORT} (coach ${coach ? 'on' : 'off: add a Claude API key in Settings → APIs'})`)
   startScheduler()
   startBackups(ROOT)
+  startUpdateChecks(ROOT)
   seedFromChat().then(backfillEmbeddings).catch(e => console.error('memory: startup failed:', e))
   startInboxWatcher()
 })

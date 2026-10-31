@@ -57,7 +57,8 @@ app in the browser, not with curl.
 
 ## Commit
 
-The folder is a git repo; commit each finished change so it can be undone:
+The folder is a git repo; commit each finished change so it can be undone. Updates merge the new version from GitHub
+(origin/main) into this folder and refuse while there are uncommitted changes, so always commit:
 
 ```sh
 git add -A && git diff --cached --name-only   # must not list data/, inbox/, .env or *.db
@@ -78,6 +79,7 @@ server/
   dashboard/        GET /api/dashboard: one module per page (sessions, training, body, whoop, nutrition, plan, tests…)
   memory.ts         coach memory: notes (+ optional recall with OLLAMA_URL)
   sample.ts         sample-mode generator (separate process, throwaway database; never touches data/)
+  update.ts         new-version check (git fetch origin main) and one-click update (merge); Settings → Updates
   journal.ts weekPlan.ts backup.ts uploadTokens.ts
 src/
   app/              React components: App (auth gate, onboarding gate, data loading), LockScreen, Onboarding (first-run
