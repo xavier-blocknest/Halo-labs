@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getSources, syncNow, type Connector, type Sources } from './api'
+import { ActivitySources } from './ActivitySources'
 import { ApiKeys } from './ApiKeys'
 import { Backups } from './Backups'
 import { CoachMemory } from './CoachMemory'
@@ -106,6 +107,7 @@ export function DataPage({ embedded = false }: { embedded?: boolean }) {
         </ul>
       </section>
 
+      <ActivitySources />
       <ApiKeys />
       <RecoveryKit />
       <CoachPicker />

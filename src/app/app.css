@@ -183,3 +183,12 @@ html.upd-on body { padding-top: calc(var(--upd-h) + env(safe-area-inset-top)); }
 html.upd-on header[style*="position: fixed"] { top: calc(var(--upd-h) + env(safe-area-inset-top)) !important; padding-top: 10px !important; }
 html.upd-on aside[style*="sticky"] { top: calc(var(--upd-h) + env(safe-area-inset-top)) !important; height: calc(100vh - var(--upd-h) - env(safe-area-inset-top)) !important; }
 .upd-list { margin: 4px 0 12px 18px; font-size: 13px; color: var(--t2); display: flex; flex-direction: column; gap: 2px; }
+
+/* Settings → Activity sources (ActivitySources.tsx): one row per sport with a segmented choice. */
+.dp .act-src { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.dp .act-src li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--line); }
+.dp .act-src-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dp .act-src-seg { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: oklch(1 0 0 / 0.04); border: 1px solid var(--line); flex-wrap: wrap; }
+.dp .act-src-seg button { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 7px; border: 0; cursor: pointer; background: transparent; color: var(--t2); }
+.dp .act-src-seg button.on { background: oklch(0.82 0.13 210 / 0.16); color: var(--accent); }
+.dp .act-src-seg button:disabled { cursor: default; }

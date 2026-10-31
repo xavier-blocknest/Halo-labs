@@ -15,6 +15,7 @@ import { backfillEmbeddings, embedStatus, forgetHistory, historyStats, initMemor
 import { checkUploadToken, createUploadToken, listUploadTokens, revokeUploadToken, throttled } from './uploadTokens.ts'
 import { verifyKey, wipeData, deleteSource, getSecret, setSecret, upsertRecords, getState, lastError, lastRuns, openDb, recentImports, setState, sourceSummary } from './db.ts'
 import { dashboard } from './dashboard/index.ts'
+import { buildSessions, SOURCE_CHOICES, SOURCE_SPORTS, SOURCES_KEY, sourcePrefs, type SourcePrefs } from './dashboard/sessions.ts'
 import { parseWhen, roadmapDoc, roadmapEdits, SCHEDULE_DAYS, STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
 import { today } from './dashboard/time.ts'
 import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry } from './journal.ts'
@@ -382,7 +383,7 @@ async function wipeAll(req: IncomingMessage, res: ServerResponse) {
   const { confirm, keys, passkeys } = JSON.parse(await readBody(req) || '{}') as { confirm?: string; keys?: boolean; passkeys?: boolean }
   if (confirm !== 'DELETE') throw new AuthError('Type DELETE to confirm.')
   if (isSyncing('whoop') || isSyncing('strava')) throw new AuthError('A sync is running. Try again in a minute.')
-  wipeData(['settings', 'auth:idleMinutes', 'recovery:downloaded', ...(passkeys === true ? [] : ['upload-tokens'])])
+  wipeData(['settings', 'auth:idleMinutes', 'recovery:downloaded', ...(passkeys === true ? [] : ['upload-tokens']), ...(keys === true ? [] : [SOURCES_KEY])])
   if (keys === true) saveSettings(Object.fromEntries(listSettings().map(r => [r.id, '']))) // through settings.ts, so its listeners hear it
   forgetHistory() // resets the coach memory's in-process cache
   for (const dir of [join(ROOT, 'data', 'imports'), join(ROOT, 'inbox')])
@@ -599,6 +600,18 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     if (url.pathname === '/api/update/check' && req.method === 'POST') return send(res, 200, await checkForUpdate())
     if (url.pathname === '/api/update' && req.method === 'POST') {
       try { return send(res, 200, await applyUpdate()) } catch (e) { return send(res, 400, { error: (e as Error).message }) }
+    }
+    if (url.pathname === '/api/activity-sources') {
+      // Settings → Activity sources: which app defines each sport's workouts (Auto, or a fixed app). See sessions.ts.
+      if (req.method === 'PUT') {
+        const body = JSON.parse(await readBody(req)) as Partial<SourcePrefs>, next = sourcePrefs()
+        for (const k of SOURCE_SPORTS) if (body[k] !== undefined) {
+          if (body[k] !== 'auto' && !SOURCE_CHOICES[k].includes(body[k] as never)) throw new AuthError(`Unknown source for ${k}.`)
+          next[k] = body[k]!
+        }
+        setSecret(SOURCES_KEY, next)
+      }
+      return send(res, 200, { prefs: sourcePrefs(), effective: buildSessions().sources, choices: SOURCE_CHOICES })
     }
     if (url.pathname === '/api/wipe' && req.method === 'POST') return await wipeAll(req, res)
     if (url.pathname === '/api/roadmap/doc' && req.method === 'GET') return send(res, 200, { doc: roadmapDoc()?.doc ?? null })

@@ -1,4 +1,7 @@
-// One training session per real-world workout, with a fixed source of truth per sport (the athlete's rules):
+// One training session per real-world workout, with one source of truth per sport. The athlete picks it in Settings →
+// Activity sources (secret `activity-sources`); "Auto" (the default) resolves per sport in resolveSources() below:
+// run/swim = Strava if it has any, ride = WHOOP if it has any, strength = FitnessAI if exported, each else WHOOP (so with
+// only WHOOP connected, everything is WHOOP). The text below describes the defaults:
 //   Running, swimming:  Strava defines the session (distance, pace, name, gear; Runna adds the plan link);
 //                       WHOOP supplies the physical impact (heart rate, strain, zones, calories).
 //   Weightlifting:      FitnessAI defines the session (sets, exercises, duration); WHOOP supplies the impact.
@@ -12,7 +15,7 @@
 // but with no distance: WHOOP's GPS distance indoors is meaningless (e.g. 147 m for 47 min). WHOOP recovery sessions (sauna, meditation, ...) are never training.
 // Matching: time spans overlapping by at least half of the shorter one, same sport; for lifts also the closest
 // WHOOP lift on the same day within 2 hours, since FitnessAI times are when logging started.
-import { readRecords } from '../db.ts'
+import { getSecret, readRecords } from '../db.ts'
 import type { LiftWorkout, RunnaRun, StravaActivity, WhoopWorkout } from '../model.ts'
 import { RECOVERY } from './whoop.ts'
 
@@ -40,6 +43,32 @@ const WHOOP_SPORT: [RegExp, Sport | 'recovery'][] = [
 export const stravaSport = (t: string): Sport => STRAVA_SPORT[t] ?? STRAVA_SPORT[t.replace(/([a-z])([A-Z])/g, '$1 $2')] ?? 'other'
 const whoopSport = (n: string) => WHOOP_SPORT.find(([re]) => re.test(n))?.[1] ?? 'other'
 
+// ---- Activity sources (Settings) ------------------------------------------------------------------------------
+export type SourceSport = 'run' | 'swim' | 'ride' | 'strength'
+export type Source = 'strava' | 'whoop' | 'fitnessai'
+export type SourcePrefs = Record<SourceSport, 'auto' | Source>
+/** What each sport can come from; the first is Auto's preference when it has data, WHOOP is the fallback. */
+export const SOURCE_CHOICES: Record<SourceSport, Source[]> = { run: ['strava', 'whoop'], swim: ['strava', 'whoop'], ride: ['whoop', 'strava'], strength: ['fitnessai', 'whoop', 'strava'] }
+export const SOURCE_SPORTS = Object.keys(SOURCE_CHOICES) as SourceSport[]
+export const SOURCES_KEY = 'activity-sources'
+
+export function sourcePrefs(): SourcePrefs {
+  const p = getSecret<Partial<SourcePrefs>>(SOURCES_KEY) ?? {}
+  return Object.fromEntries(SOURCE_SPORTS.map(k => [k, p[k] && (p[k] === 'auto' || SOURCE_CHOICES[k].includes(p[k] as Source)) ? p[k] : 'auto'])) as SourcePrefs
+}
+
+/** The source each sport uses: the athlete's choice, or for Auto the preferred app when it has that sport, else WHOOP
+ *  (ride: WHOOP when it has rides, else Strava when it does). `has` = which apps have records of which sport. */
+export function resolveSources(prefs: SourcePrefs, has: Record<Source, Set<Sport>>): Record<SourceSport, Source> {
+  return Object.fromEntries(SOURCE_SPORTS.map(k => {
+    if (prefs[k] !== 'auto') return [k, prefs[k]]
+    const [first, ...rest] = SOURCE_CHOICES[k]
+    const sport: Sport = k
+    if (has[first].has(sport)) return [k, first]
+    return [k, rest.find(s => s !== 'whoop' && has[s].has(sport) && !has.whoop.has(sport)) ?? 'whoop']
+  })) as Record<SourceSport, Source>
+}
+
 type Span = { t0: number; t1: number }
 const overlapOf = (a: Span, b: Span) => {
   const ov = Math.min(a.t1, b.t1) - Math.max(a.t0, b.t0), shorter = Math.min(a.t1 - a.t0, b.t1 - b.t0)
@@ -57,6 +86,14 @@ function liftName(w: LiftWorkout) {
 export function buildSessions() {
   const whoop = readRecords<WhoopWorkout>('whoop', 'workout').map(r => ({ r, sport: whoopSport(r.data.name), t0: Date.parse(r.data.start), t1: Date.parse(r.data.end) }))
     .filter(w => w.sport !== 'recovery')
+  const stravaActs = readRecords<StravaActivity>('strava', 'activity')
+  const lifts = readRecords<LiftWorkout>('fitnessai', 'workout')
+  const has: Record<Source, Set<Sport>> = {
+    strava: new Set(stravaActs.map(a => stravaSport(a.data.type))),
+    whoop: new Set(whoop.map(w => w.sport as Sport)),
+    fitnessai: new Set(lifts.length ? ['strength' as const] : []),
+  }
+  const src = resolveSources(sourcePrefs(), has)
   const used = new Set<string>() // WHOOP records already attached to a session
   const impact = (w: (typeof whoop)[number] | undefined) => w
     ? { avgHr: w.r.data.avgHr, maxHr: w.r.data.maxHr, calories: w.r.data.kcal, strain: w.r.data.strain == null ? null : Math.round(w.r.data.strain * 10) / 10, zonePct: w.r.data.zonePct }
@@ -78,25 +115,24 @@ export function buildSessions() {
   const runnaByStrava = new Map(runna.flatMap(r => r.data.stravaIds.map(id => [String(id), r] as const)))
   let stravaIgnored = 0
 
-  // Runs and swims: Strava.
-  for (const a of readRecords<StravaActivity>('strava', 'activity')) {
+  // Strava: the sports whose source is Strava (by default runs and swims).
+  for (const a of stravaActs) {
     const sport = stravaSport(a.data.type)
-    if (sport !== 'run' && sport !== 'swim') { stravaIgnored++; continue }
+    if (!SOURCE_SPORTS.includes(sport as SourceSport) || src[sport as SourceSport] !== 'strava') { stravaIgnored++; continue }
     const t0 = Date.parse(a.data.start), span = { t0, t1: t0 + 1000 * (a.data.elapsedS ?? a.data.movingS ?? 1800) }
-    const w = bestWhoop(span, sport, a.day!)
+    const w = bestWhoop(span, sport, a.day!, sport === 'strength' ? 2 : 0)
     const rn = sport === 'run' ? runnaByStrava.get(a.id) : undefined
     sessions.push({
       id: `strava:${a.id}`, day: a.day!, start: a.data.start, sport, name: a.data.name,
-      movingS: a.data.movingS, elapsedS: a.data.elapsedS, distanceM: a.data.distanceM, elevGainM: a.data.elevGainM, gear: a.data.gear,
+      movingS: a.data.movingS, elapsedS: a.data.elapsedS, distanceM: sport === 'strength' ? null : a.data.distanceM, elevGainM: sport === 'strength' ? null : a.data.elevGainM, gear: a.data.gear,
       ...impact(w), sets: null, exercises: null, liftLb: null,
       sources: ['strava', ...(w ? ['whoop' as const] : []), ...(rn ? ['runna' as const] : [])],
     })
   }
 
-  // Weightlifting: FitnessAI.
-  const lifts = readRecords<LiftWorkout>('fitnessai', 'workout')
-  const fitnessCoveredUntil = lifts.reduce((m, f) => (f.day! > m ? f.day! : m), '')
-  for (const f of lifts) {
+  // Weightlifting: FitnessAI, when it's the strength source.
+  const fitnessCoveredUntil = src.strength === 'fitnessai' ? lifts.reduce((m, f) => (f.day! > m ? f.day! : m), '') : ''
+  for (const f of src.strength === 'fitnessai' ? lifts : []) {
     const t0 = Date.parse(f.data.start), span = { t0, t1: f.data.end ? Date.parse(f.data.end) : t0 + 1000 * (f.data.durationS ?? 3600) }
     const w = bestWhoop(span, 'strength', f.day!, 2)
     sessions.push({
@@ -108,22 +144,29 @@ export function buildSessions() {
     })
   }
 
-  // Everything else: WHOOP. Its runs, swims and lifts only count through Strava / FitnessAI above.
+  // WHOOP: the sports whose source is WHOOP, everything outside the four (walks, hikes, golf…), and what the other
+  // sources leave over: with Strava for runs, a WHOOP run with no Strava match is a treadmill run (no distance); with
+  // Strava for rides, an unmatched WHOOP ride is an indoor ride (no distance); with FitnessAI for strength, WHOOP lifts
+  // after the last export are provisional. Unmatched WHOOP swims, and lifts the chosen app should have, are left out.
   const unmatched = { treadmillRuns: 0, whoopSwims: 0, whoopLifts: 0, provisionalLifts: [] as string[], fitnessCoveredUntil }
   for (const w of whoop) {
     if (used.has(w.r.id)) continue
-    if (w.sport === 'run') unmatched.treadmillRuns++
-    if (w.sport === 'swim') { unmatched.whoopSwims++; continue }
-    if (w.sport === 'strength' && w.r.day! <= fitnessCoveredUntil) { unmatched.whoopLifts++; continue }
-    const provisional = w.sport === 'strength'
-    if (provisional) unmatched.provisionalLifts.push(w.r.day!)
+    const own = !SOURCE_SPORTS.includes(w.sport as SourceSport) || src[w.sport as SourceSport] === 'whoop'
+    let name = w.r.data.name, distanceM = w.r.data.distanceM, provisional = false
+    if (!own) {
+      if (w.sport === 'run') { unmatched.treadmillRuns++; name = 'Treadmill run'; distanceM = null }
+      else if (w.sport === 'ride') { name = 'Indoor ride'; distanceM = null }
+      else if (w.sport === 'swim') { unmatched.whoopSwims++; continue }
+      else if (src.strength === 'fitnessai' && w.r.day! > fitnessCoveredUntil) { provisional = true; unmatched.provisionalLifts.push(w.r.day!); name = `${name} · from WHOOP` }
+      else { unmatched.whoopLifts++; continue }
+    }
     sessions.push({
-      id: `whoop:${w.r.id}`, day: w.r.day!, start: w.r.data.start, sport: w.sport as Sport, name: provisional ? `${w.r.data.name} · from WHOOP` : w.sport === 'run' ? 'Treadmill run' : w.r.data.name, provisional,
+      id: `whoop:${w.r.id}`, day: w.r.day!, start: w.r.data.start, sport: w.sport as Sport, name, provisional,
       movingS: w.r.data.durationMin != null ? w.r.data.durationMin * 60 : Math.round((w.t1 - w.t0) / 1000), elapsedS: Math.round((w.t1 - w.t0) / 1000),
-      distanceM: w.sport === 'run' ? null : w.r.data.distanceM, elevGainM: null, gear: null, ...impact(w), sets: null, exercises: null, liftLb: null, sources: ['whoop'],
+      distanceM, elevGainM: null, gear: null, ...impact(w), sets: null, exercises: null, liftLb: null, sources: ['whoop'],
     })
   }
   unmatched.provisionalLifts.sort()
 
-  return { sessions: sessions.sort((a, b) => b.start.localeCompare(a.start)), records: sessions.length, stravaIgnored, unmatched }
+  return { sessions: sessions.sort((a, b) => b.start.localeCompare(a.start)), records: sessions.length, stravaIgnored, unmatched, sources: src }
 }

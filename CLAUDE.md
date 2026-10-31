@@ -23,9 +23,11 @@ them, verify them, commit them, and tell him in one or two plain sentences what 
 4. **Everything is encrypted at rest.** New stored data goes through `upsertRecords` / `setState` / `setSecret`
    (`server/db.ts`), never raw SQLite writes. API keys live in Settings → APIs (`server/settings.ts`), never in code.
 5. **Each workout counts once.** Never add up raw records from two apps; use `buildSessions()`
-   (`server/dashboard/sessions.ts`) and its source-of-truth rules: runs and swims = Strava, lifts = FitnessAI,
-   everything else = WHOOP; WHOOP supplies heart rate, strain and calories for all of them. A WHOOP run with no
-   Strava match is a treadmill run (no distance).
+   (`server/dashboard/sessions.ts`) and its source-of-truth rules. The athlete picks the source per sport in Settings →
+   Activity sources (`resolveSources()`); Auto = runs and swims from Strava, rides from WHOOP, lifts from FitnessAI
+   when those have data, else WHOOP (WHOOP only → everything WHOOP); walks and the rest = WHOOP. WHOOP supplies heart
+   rate, strain and calories when it isn't the source. With Strava for runs, a WHOOP run with no Strava match is a
+   treadmill run (no distance).
 6. **Locked by default.** Every `/api/*` and `/oauth/*` route sits behind the passkey session check in
    `server/index.ts`. New data routes go *after* that check. Only `/auth/*`, `/api/health` and `/hooks/import`
    (upload-only token) are reachable without signing in.

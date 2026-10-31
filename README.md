@@ -69,6 +69,9 @@ coach read it. That's your call; the alternative is to leave Strava disconnected
 - **Roadmap**: on the Roadmap page, **Build your roadmap** (or **Edit roadmap** later) to set your goal race, the races
   and milestones on the way, a typical week and notes for the coach. Already have a roadmap file in Halo Labs' format
   ([docs/roadmap-template.json](docs/roadmap-template.json))? Upload it instead; you can still edit it in the app.
+- **Activity sources**: Settings → Activity sources picks which app each kind of workout comes from (runs, swims,
+  rides, strength). **Auto** uses Strava for runs and swims, WHOOP for rides and FitnessAI for strength when they have
+  data, and WHOOP otherwise, so with only WHOOP connected everything comes from WHOOP.
 - **Coach**: Settings → Coach: keep the built-in **Coach** or **write your own** personality. Tell it things to
   remember ("remember I'm allergic to shellfish"); they show up under Settings → Coach memory.
 
