@@ -37,7 +37,7 @@ async function stream(req: CompleteRequest, onText: (delta: string) => void): Pr
       if (!line.trim()) continue
       const ev = JSON.parse(line) as { d?: string; done?: boolean; text?: string; error?: string; plan?: string }
       if (ev.error) throw new Error(ev.error)
-      if (ev.plan) window.dispatchEvent(new Event('halolabs:data')) // the coach saved a week plan: reload so the Week page shows it
+      if (ev.plan) window.dispatchEvent(new Event('halolabs:data')) // the coach saved a week plan or changed priorities: reload so the pages show it
       if (ev.done) return ev.text ?? ''
       if (ev.d) onText(ev.d)
     }

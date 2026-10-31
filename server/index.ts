@@ -21,6 +21,7 @@ import { today } from './dashboard/time.ts'
 import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry, workoutsAround } from './journal.ts'
 import { deleteEvent, EVENT_ID, saveEvent } from './calendar.ts'
 import { SAVE_WEEK_PLAN_TOOL, saveWeekPlan } from './weekPlan.ts'
+import { UPDATE_PRIORITIES_TOOL, updatePriorities } from './priorities.ts'
 import { importUpload, initImports, scanInbox, startInboxWatcher } from './import/index.ts'
 import { authorizeUrl, disconnect, handleCallback, isConfigured, isConnected, onLocalhost, publicUrl, redirectUri, type Provider } from './oauth.ts'
 import { isSyncing, startScheduler, syncIfStale, syncNow } from './sync.ts'
@@ -124,17 +125,27 @@ async function complete(req: IncomingMessage, res: ServerResponse) {
   }
   const textOfReply = (m: Anthropic.Beta.BetaMessage) => m.content.flatMap(b => (b.type === 'text' ? [b.text] : [])).join('').trim()
   const save = (text: string) => { if (memory && q && text) setTimeout(() => saveTurn(q, text, String(page ?? '').slice(0, 40)).catch(e => console.error('memory: save failed:', e)), 2_000) }
-  // Chat and voice can save week plans (save_week_plan): run the tool, hand the result back, let the coach finish.
-  const tools = memory ? [SAVE_WEEK_PLAN_TOOL] : undefined
-  const runTools = (m: Anthropic.Beta.BetaMessage, onSaved: (start: string) => void): Anthropic.Beta.BetaToolResultBlockParam[] =>
+  // Chat and voice can save week plans (save_week_plan) and manage the Overview priorities (update_priorities): run
+  // the tool, hand the result back, let the coach finish. onSaved tells the page to reload its data.
+  const tools = memory ? [SAVE_WEEK_PLAN_TOOL, UPDATE_PRIORITIES_TOOL] : undefined
+  const runTool = (name: string, input: Record<string, unknown>, onSaved: (what: string) => void): string => {
+    if (name === 'save_week_plan') {
+      const plan = saveWeekPlan(input, 'coach'); onSaved(plan.start)
+      console.log(`coach: saved week ${plan.start} (${Object.keys(plan.days).length} days, ${Object.values(plan.days).flat().length} sessions)`)
+      return `Saved the week of ${plan.start} (${Object.keys(plan.days).length} days planned). It now shows on the Week page.`
+    }
+    if (name === 'update_priorities') {
+      const done = updatePriorities(input); onSaved('priorities')
+      console.log(`coach: priorities ${done.join('; ')}`)
+      return `Done: ${done.join('; ')}. The Priorities card on the Overview shows it now.`
+    }
+    throw new Error(`Unknown tool ${name}`)
+  }
+  const runTools = (m: Anthropic.Beta.BetaMessage, onSaved: (what: string) => void): Anthropic.Beta.BetaToolResultBlockParam[] =>
     m.content.flatMap(b => {
       if (b.type !== 'tool_use') return []
-      if (b.name !== 'save_week_plan') return [{ type: 'tool_result' as const, tool_use_id: b.id, is_error: true, content: `Unknown tool ${b.name}` }]
-      try {
-        const plan = saveWeekPlan(b.input as Record<string, unknown>, 'coach'); onSaved(plan.start)
-        console.log(`coach: saved week ${plan.start} (${Object.keys(plan.days).length} days, ${Object.values(plan.days).flat().length} sessions)`)
-        return [{ type: 'tool_result' as const, tool_use_id: b.id, content: `Saved the week of ${plan.start} (${Object.keys(plan.days).length} days planned). It now shows on the Week page.` }]
-      } catch (e) { console.log(`coach: week plan rejected: ${(e as Error).message}`); return [{ type: 'tool_result' as const, tool_use_id: b.id, is_error: true, content: (e as Error).message }] }
+      try { return [{ type: 'tool_result' as const, tool_use_id: b.id, content: runTool(b.name, b.input as Record<string, unknown>, onSaved) }] }
+      catch (e) { console.log(`coach: ${b.name} rejected: ${(e as Error).message}`); return [{ type: 'tool_result' as const, tool_use_id: b.id, is_error: true, content: (e as Error).message }] }
     })
   let convo = params.messages
   const parts: string[] = []
@@ -150,7 +161,7 @@ async function complete(req: IncomingMessage, res: ServerResponse) {
         if (m.stop_reason === 'refusal') { res.end(JSON.stringify({ done: true, text: REFUSED, refusal: true }) + '\n'); return }
         const t = textOfReply(m); if (t) parts.push(t)
         if (m.stop_reason !== 'tool_use' || turn >= 3) break
-        const results = runTools(m, start => res.write(JSON.stringify({ plan: start }) + '\n'))
+        const results = runTools(m, what => res.write(JSON.stringify({ plan: what }) + '\n'))
         convo = [...convo, { role: 'assistant', content: m.content }, { role: 'user', content: results }]
       }
       const text = parts.join('\n\n')

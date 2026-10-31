@@ -15,6 +15,7 @@ import { whoopSummary } from './whoop.ts'
 import { journalEntries } from '../journal.ts'
 import { calendarSummary } from '../calendar.ts'
 import { weekPlans } from '../weekPlan.ts'
+import { priorityList } from '../priorities.ts'
 
 export function dashboard(day = localToday()) {
   const last: Record<string, string> = {}
@@ -38,6 +39,8 @@ export function dashboard(day = localToday()) {
     tests: testsSummary(),
     journal: journalEntries(),
     weekPlans: weekPlans(day),
+    // The coach's own priorities and its edits to the data-driven ones (merged on the Overview card).
+    coachPriorities: priorityList(),
     calendar: calendarSummary(day, plan, protocol),
   }
 }

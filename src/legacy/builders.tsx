@@ -49,6 +49,14 @@ function chatProfile(D) {
     lines.push(`Week plans. You can save a week's plan with the save_week_plan tool once he agrees to it or asks for a change; it shows on his Week page.\n${showWeek('This week', wp.thisStart, wp.this)}\n${showWeek('Next week', wp.nextStart, wp.next)}` +
       (wp.later ?? []).map(w => `\n${showWeek(`Week of ${fmtDay(w.start)}`, w.start, w)}`).join(''))
   }
+  { // Priorities card (Overview): what the athlete sees, in order, with ids for the update_priorities tool.
+    let al = {}; try { al = JSON.parse(localStorage.getItem('im4-al') || '{}') } catch (e) {}
+    const ps = priorities(D), hidden = (D.coachPriorities ?? []).filter(p => !p.custom && p.removed)
+    const st = a => al[a.key] === 'done' ? 'marked done' : al[a.key] === 'snoozed' ? 'snoozed' : al[a.key] === 'dismissed' ? 'dismissed' : 'active'
+    lines.push(`Priorities (the Overview card shows the first 3 active ones; you can add, edit, remove or restore them with the update_priorities tool):\n` +
+      (ps.length ? ps.map(a => `${a.id} [${a.src}${a.edited ? ', reworded by you' : ''}${a.pos === 'first' && a.src === 'data' ? ', moved first' : ''}] ${st(a)}: ${a.title}${a.why ? ` (${a.why})` : ''} → ${a.act}`).join('\n') : 'none') +
+      (hidden.length ? `\nData priorities you removed: ${hidden.map(p => p.id).join(', ')} (restore brings one back if it still applies).` : ''))
+  }
   const lv = D.body?.volume
   if (lv) { const f = (k, l) => { const x = lv.periods[k]; return `${l} ${x.lb.toLocaleString()} lb, ${x.sets} sets, ${x.reps} reps, ${x.n} sessions` + (x.prev ? ` (prior period ${x.prev.lb.toLocaleString()} lb, ${x.prev.sets} sets)` : '') }
     lines.push(`Lifting volume (weight lifted = reps × weight, FitnessAI + screenshots): ${f('week', 'this week so far')}; ${f('d30', 'last 30 days')}; ${f('year', 'this year')}. Most weight moved in 30 days: ${lv.periods.d30.top.map(t => `${t.name} ${t.lb.toLocaleString()} lb`).join(', ')}.`) }
@@ -164,7 +172,7 @@ function verdict(go) {
 }
 
 /** Priorities from the data: stale sources, recovery signals, logging gaps, out-of-range labs, neglected work. */
-function priorities(D) {
+function dataPriorities(D) {
   const out = [], w = D.whoop, t = D.training, f = D.fuel, b = D.body
   for (const [src, label] of [['whoop', 'WHOOP'], ['strava', 'Strava']]) {
     const last = D.lastData[src]
@@ -195,13 +203,25 @@ function priorities(D) {
   return out
 }
 
+/** The card's list: the data-driven priorities with the coach's edits applied (reworded, moved first, hidden), plus
+ *  the coach's own (D.coachPriorities, server/priorities.ts). key = what Done/Snooze/Dismiss store in im4-al: the id
+ *  for data-driven ones, id@updated for the coach's, so an edited coach priority shows again. */
+function priorities(D) {
+  const cp = D.coachPriorities ?? [], ov = Object.fromEntries(cp.filter(p => !p.custom).map(p => [p.id, p]))
+  const auto = dataPriorities(D).filter(a => !ov[a.id]?.removed).map(a => { const o = ov[a.id]
+    return { ...a, key: a.id, src: 'data', edited: !!o, pos: o?.position ?? 'after_data', title: o?.title || a.title, why: o?.why || a.why, act: o?.act || a.act } })
+  const mine = cp.filter(p => p.custom).map(p => ({ id: p.id, key: p.id + '@' + p.updated, src: 'coach', c: A, title: p.title, why: p.why, act: p.act, pos: p.position ?? 'first' }))
+  const all = [...mine, ...auto]
+  return [...all.filter(a => a.pos === 'first'), ...all.filter(a => a.pos !== 'first')]
+}
+
 function command(go) {
   const D = this.props.D
   const ALL = priorities(D)
   const al = this.state.al, setAl = (id, st) => this.setState(s => { const n = Object.assign({}, s.al); n[id] = st; this.saveLS('im4-al', n); return { al: n } })
-  const active = ALL.filter(a => !al[a.id]), top = active.slice(0, 3)
+  const active = ALL.filter(a => !al[a.key]), top = active.slice(0, 3)
   return {
-    prio: top.map((a, i) => ({ n: String(i + 1).padStart(2, '0'), title: a.title, why: a.why, act: a.act, c: a.c, bc: a.c.replace(')', ' / 0.3)'), done: () => setAl(a.id, 'done'), snooze: () => setAl(a.id, 'snoozed'), dismiss: () => setAl(a.id, 'dismissed') })),
+    prio: top.map((a, i) => ({ n: String(i + 1).padStart(2, '0'), title: a.title, why: a.why, act: a.act, c: a.c, bc: a.c.replace(')', ' / 0.3)'), done: () => setAl(a.key, 'done'), snooze: () => setAl(a.key, 'snoozed'), dismiss: () => setAl(a.key, 'dismissed') })),
     prioEmpty: top.length === 0, prioMeta: top.length + ' of ' + active.length + ' active',
     prioQueued: Math.max(0, active.length - 3) + ' more queued · ' + Object.values(al).filter(x => x === 'done').length + ' done · ' + Object.values(al).filter(x => x === 'snoozed').length + ' snoozed',
     prioReset: () => this.setState(() => { this.saveLS('im4-al', {}); return { al: {} } }), prioResetT: Object.keys(al).length ? 'Restore all' : '',

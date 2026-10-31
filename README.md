@@ -77,6 +77,8 @@ coach read it. That's your call; the alternative is to leave Strava disconnected
   misread (impossibly fast, or no strokes counted) still count toward distance but are left out of pace and SWOLF.
 - **Coach**: Settings → Coach: keep the built-in **Coach** or **write your own** personality. Tell it things to
   remember ("remember I'm allergic to shellfish"); they show up under Settings → Coach memory.
+  In chat or by voice the coach can also plan your week and manage the Priorities card on the Overview: ask it to add
+  one ("add a priority to book a bike fit"), change one, or remove one.
 
 ## 4. Using it on your iPhone (optional)
 
