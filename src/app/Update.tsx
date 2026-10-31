@@ -33,25 +33,28 @@ function useUpdate() {
     setBusy(true); setErr(null)
     try { await runUpdate() } catch (e) { setErr((e as Error).message); setBusy(false) }
   }
-  return { s, setS, busy, err, update }
+  return { s, setS, load, busy, err, update }
 }
 
+/** Full-width bar across the top of the page: "New version available. Update now" and an X to dismiss (until the
+ *  next version). While it shows, <html> gets .upd-on so the page and its fixed header move down below it. */
 export function UpdateBanner() {
-  const { s, busy, err, update } = useUpdate()
+  const { s, load, busy, err, update } = useUpdate()
   const [later, setLater] = useState(() => { try { return localStorage.getItem(DISMISSED) } catch { return null } })
-  if (!s || !s.behind || !s.latest || (later === s.latest && !busy)) return null
+  const show = !!(s && s.behind && s.latest && (later !== s.latest || busy))
+  useEffect(() => { document.documentElement.classList.toggle('upd-on', show); return () => document.documentElement.classList.remove('upd-on') }, [show])
+  useEffect(() => { window.addEventListener('halolabs:update', load); return () => window.removeEventListener('halolabs:update', load) }, [load])
+  if (!show || !s) return null
   const dismiss = () => { try { localStorage.setItem(DISMISSED, s.latest!) } catch { /* private mode */ } setLater(s.latest) }
   return (
     <div className="upd-bar" role="status">
-      <span className="upd-dot" aria-hidden />
       <span className="upd-text">
-        <b>{busy ? 'Updating Halo Labs…' : 'A new version of Halo Labs is available'}</b>
-        {!busy && s.changes[0] && <span> · {s.changes[0]}{s.behind > 1 ? ` and ${s.behind - 1} more` : ''}</span>}
-        {err && <span className="upd-err">{err}</span>}
-        {!err && s.terminal && !busy && <span className="upd-err">This one installs new parts: run <code>./halo update</code> in Terminal.</span>}
+        {busy ? 'Updating Halo Labs… the page reloads when it’s done.'
+          : err ? <span className="upd-err">{err}</span>
+          : s.terminal ? <>New version available. Run <code>./halo update</code> in Terminal.</>
+          : <>New version available. <button className="upd-go" onClick={update}>Update now</button></>}
       </span>
-      {!s.terminal && <button className="upd-go" disabled={busy} onClick={update}>{busy ? 'Updating…' : 'Update now'}</button>}
-      {!busy && <button className="upd-later" onClick={dismiss}>Later</button>}
+      {!busy && <button className="upd-x" onClick={dismiss} aria-label="Dismiss until the next version">×</button>}
     </div>
   )
 }
@@ -59,7 +62,11 @@ export function UpdateBanner() {
 export function UpdatesCard() {
   const { s, setS, busy, err, update } = useUpdate()
   const [checking, setChecking] = useState(false)
-  const check = async () => { setChecking(true); setS(await fetch('/api/update/check', { method: 'POST' }).then(r => r.json()).catch(() => s)); setChecking(false) }
+  const check = async () => {
+    setChecking(true); setS(await fetch('/api/update/check', { method: 'POST' }).then(r => r.json()).catch(() => s)); setChecking(false)
+    try { localStorage.removeItem(DISMISSED) } catch { /* private mode */ }
+    window.dispatchEvent(new Event('halolabs:update')) // the banner shows right away, even if it was dismissed
+  }
   if (!s) return null
   const when = s.checkedAt ? new Date(s.checkedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null
   return (
