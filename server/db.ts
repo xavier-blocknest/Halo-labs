@@ -101,6 +101,19 @@ export function sourceSummary() {
     FROM records GROUP BY source, kind ORDER BY source, kind`).all() as { source: string; kind: string; n: number; first: string; last: string; synced: string }[]
 }
 
+/** Settings → Delete all data: every record, saved state, import log entry and sync run, and every secret except
+ *  the ones named in `keep` (passkeys and sessions live in their own tables and stay). Then compacts the file so the
+ *  deleted rows don't linger on disk. */
+export function wipeData(keep: string[]) {
+  db.exec('BEGIN')
+  try {
+    db.exec('DELETE FROM records; DELETE FROM state; DELETE FROM imports; DELETE FROM sync_runs;')
+    db.prepare(`DELETE FROM secrets WHERE name NOT IN (${keep.map(() => '?').join(', ')})`).run(...keep)
+    db.exec('COMMIT')
+  } catch (e) { db.exec('ROLLBACK'); throw e }
+  db.exec('PRAGMA wal_checkpoint(TRUNCATE); VACUUM;')
+}
+
 export function getSecret<T>(name: string): T | null {
   const row = db.prepare('SELECT value FROM secrets WHERE name = ?').get(name) as { value: Uint8Array } | undefined
   return row ? open<T>(row.value) : null

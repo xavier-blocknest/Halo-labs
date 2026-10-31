@@ -3,7 +3,7 @@
 // Run: node server/index.ts   (Node 24 runs TypeScript directly)
 import Anthropic from '@anthropic-ai/sdk'
 import { execFile } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -13,7 +13,7 @@ import { loadKey } from './crypto.ts'
 import { backupStatus, runBackup, startBackups } from './backup.ts'
 import { backfillEmbeddings, embedStatus, forgetHistory, historyStats, initMemory, listNotes, memoryBlock, NOTE_KINDS, putNote, removeNote, saveTurn, seedFromChat, type NoteKind } from './memory.ts'
 import { checkUploadToken, createUploadToken, listUploadTokens, revokeUploadToken, throttled } from './uploadTokens.ts'
-import { verifyKey, deleteSource, getSecret, setSecret, upsertRecords, getState, lastError, lastRuns, openDb, recentImports, setState, sourceSummary } from './db.ts'
+import { verifyKey, wipeData, deleteSource, getSecret, setSecret, upsertRecords, getState, lastError, lastRuns, openDb, recentImports, setState, sourceSummary } from './db.ts'
 import { dashboard } from './dashboard/index.ts'
 import { parseWhen, roadmapDoc, roadmapEdits, SCHEDULE_DAYS, STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
 import { today } from './dashboard/time.ts'
@@ -371,6 +371,24 @@ async function saveRoadmapDoc(req: IncomingMessage, res: ServerResponse) {
   send(res, 200, { ok: true })
 }
 
+/** POST /api/wipe {confirm: 'DELETE'}: Settings → Delete all data. Removes every record (workouts, recovery, labs,
+ *  food, journal, roadmap, week plans, coach memory and chat), saved state, WHOOP/Strava connections, the import log,
+ *  archived uploads and anything waiting in the inbox, and reopens the setup guide. Keeps what lets him back in and
+ *  saves retyping: passkeys and sessions, API keys and settings, upload links, the idle lock, and the database key.
+ *  Off-site backups are not touched. */
+async function wipeAll(req: IncomingMessage, res: ServerResponse) {
+  const { confirm } = JSON.parse(await readBody(req) || '{}') as { confirm?: string }
+  if (confirm !== 'DELETE') throw new AuthError('Type DELETE to confirm.')
+  if (isSyncing('whoop') || isSyncing('strava')) throw new AuthError('A sync is running. Try again in a minute.')
+  wipeData(['settings', 'auth:idleMinutes', 'upload-tokens', 'recovery:downloaded'])
+  forgetHistory() // resets the coach memory's in-process cache
+  for (const dir of [join(ROOT, 'data', 'imports'), join(ROOT, 'inbox')])
+    for (const f of existsSync(dir) ? readdirSync(dir) : []) rmSync(join(dir, f), { recursive: true, force: true })
+  initImports(ROOT)
+  console.log('All data deleted from Settings (passkeys, API keys and settings kept).')
+  send(res, 200, { ok: true })
+}
+
 async function hookImport(req: IncomingMessage, res: ServerResponse) {
   const text = (status: number, msg: string) => { res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(msg) }
   if (req.method !== 'POST') return text(405, 'Send the file with POST.')
@@ -570,6 +588,7 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     const ut = url.pathname.match(/^\/api\/upload-tokens\/([0-9a-f]{12})$/)
     if (ut && req.method === 'DELETE') return send(res, revokeUploadToken(ut[1]) ? 200 : 404, { ok: true })
     if (url.pathname === '/api/roadmap/edits' && req.method === 'PUT') return await saveRoadmapEdits(req, res)
+    if (url.pathname === '/api/wipe' && req.method === 'POST') return await wipeAll(req, res)
     if (url.pathname === '/api/roadmap/doc' && req.method === 'GET') return send(res, 200, { doc: roadmapDoc()?.doc ?? null })
     if (url.pathname === '/api/roadmap/doc' && req.method === 'PUT') return await saveRoadmapDoc(req, res)
     const wp = /^\/api\/week-plan\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname)

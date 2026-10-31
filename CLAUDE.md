@@ -83,7 +83,7 @@ src/
   app/              React components: App (auth gate, onboarding gate, data loading), LockScreen, Onboarding (first-run
                     wizard; state in /api/onboarding), DataPage (Settings), ApiKeys,
                     RecoveryKit, CoachPicker, CoachMemory, Uploader, RoadmapView, RoadmapPlanner (builds/edits the
-                    whole roadmap; /api/roadmap/doc), FuelView, JournalPage, WeekPlan, …
+                    whole roadmap; /api/roadmap/doc), DeleteAll (Settings → Delete all data; POST /api/wipe), FuelView, JournalPage, WeekPlan, …
   legacy/           logic.tsx (shell: nav, layout, boot sequence, chat UI; plain JS, @ts-nocheck),
                     builders.tsx (every page's view model + voice + coach prompts), View.tsx (page layout, reads only v.*)
   coachPersona.ts   coach personalities (Coach, the athlete's own)
