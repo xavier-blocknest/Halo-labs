@@ -45,6 +45,7 @@ export type ApiActivity = {
   start_date: string; start_date_local: string; elapsed_time?: number; moving_time?: number; distance?: number; total_elevation_gain?: number
   average_heartrate?: number; max_heartrate?: number; average_speed?: number; max_speed?: number; calories?: number; suffer_score?: number | null
   gear_id?: string | null; commute?: boolean; device_name?: string
+  best_efforts?: { name: string; distance: number; elapsed_time: number }[] // detail only, runs
 }
 type ApiGear = { id: string; name?: string; nickname?: string; distance?: number; retired?: boolean }
 export type ApiAthlete = { bikes?: ApiGear[]; shoes?: ApiGear[] }
@@ -59,6 +60,7 @@ export function apiActivityRow(a: ApiActivity, gearNames: Map<string, string>): 
     avgHr: n(a.average_heartrate), maxHr: n(a.max_heartrate), avgSpeed: n(a.average_speed), maxSpeed: n(a.max_speed),
     calories: n(a.calories), relativeEffort: n(a.suffer_score), gear: a.gear_id ? gearNames.get(a.gear_id) ?? null : null,
     commute: a.commute ?? null, device: a.device_name ?? null,
+    bestEfforts: a.best_efforts?.map(e => ({ name: e.name, distanceM: e.distance, elapsedS: e.elapsed_time })),
   }
   return { source: 'strava', kind: 'activity', id: String(a.id), day: a.start_date_local.slice(0, 10), data }
 }

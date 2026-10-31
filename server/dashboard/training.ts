@@ -2,6 +2,7 @@
 // of truth (runs and swims: Strava; lifts: FitnessAI; everything else: WHOOP; impact data from WHOOP). See sessions.ts.
 import { readRecords } from '../db.ts'
 import type { StravaGear } from '../model.ts'
+import { personalBests } from './bests.ts'
 import { buildSessions, type Session } from './sessions.ts'
 import { addDays, diffDays, dow, localHour, localTime, short, weekStart } from './time.ts'
 
@@ -137,6 +138,7 @@ export function trainingSummary(today: string) {
     merge: { sessions: sessions.length, stravaIgnored, unmatched },
     monthlyLongest, effRuns,
     lastActivity: acts[0].day,
+    bests: personalBests(acts, today),
     longest: { swim: longest('swim', YD), ride: longest('ride', MI), run: longest('run', MI) },
     kpis: {
       sbrPerWeek: r1(sum(full4.map(w => w.endH)) / 4), strPerWeek: r1(sum(full4.map(w => w.strN)) / 4),

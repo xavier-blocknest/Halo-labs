@@ -138,6 +138,7 @@ put({ source: 'whoop', kind: 'body', id: 'current', day: null, data: { heightM: 
 // ---- Strava: runs and swims (rides are WHOOP's), gear ----------------------------------------------------------
 
 let stravaId = 9_000_000_000
+const SAMPLE_EFFORTS: [string, number, number][] = [['400m', 400, 0.86], ['1/2 mile', 804.672, 0.9], ['1K', 1000, 0.92], ['1 mile', 1609.344, 0.94], ['2 mile', 3218.688, 0.97], ['5K', 5000, 0.98], ['10K', 10000, 1], ['Half-Marathon', 21097.5, 1.02]]
 const RUN_NAMES: Record<string, string[]> = { easy: ['Easy Zone 2 run', 'Morning shakeout', 'Recovery run'], tempo: ['Tempo intervals', 'Threshold run', '3 × 1 mi at tempo'], long: ['Long run', 'Sunday long run', 'Long, slow and steady'] }
 for (const w of workouts.filter(x => x.sport === 'run' || x.sport === 'swim')) {
   const run = w.sport === 'run', paceMinMi = run ? (w.kind === 'tempo' ? 8.4 : 10.4) - fitnessOf(w.day) * 1.1 + between(-0.3, 0.3) : 0
@@ -148,6 +149,8 @@ for (const w of workouts.filter(x => x.sport === 'run' || x.sport === 'swim')) {
     elapsedS: Math.round(w.min * 60), movingS: moving, distanceM: round(dist), elevGainM: run ? round(between(15, 90)) : 0,
     avgHr: w.avgHr, maxHr: w.maxHr, avgSpeed: round(dist / moving, 2), maxSpeed: round(dist / moving * 1.35, 2), calories: w.kcal, relativeEffort: round(w.strain * 6),
     gear: run ? 'g1' : null, commute: false, device: 'WHOOP',
+    // Strava's best efforts inside the run (Training → Personal bests): quicker than the run's pace over short distances.
+    ...(run ? { bestEfforts: SAMPLE_EFFORTS.filter(([, m]) => m <= dist).map(([name, m, quick]) => ({ name, distanceM: m, elapsedS: Math.round(m / 1609.344 * paceMinMi * 60 * quick * between(0.98, 1.02)) })) } : {}),
   } satisfies StravaActivity })
 }
 function fitnessOf(day: string) { return clamp((Date.parse(day) - Date.parse(start)) / (DAYS * 864e5), 0, 1) }

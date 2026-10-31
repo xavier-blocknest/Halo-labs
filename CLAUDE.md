@@ -76,7 +76,8 @@ server/
   model.ts          canonical record types: every importer and connector writes exactly these
   oauth.ts sync.ts connectors/   WHOOP and Strava OAuth, polling scheduler, API clients
   import/           one importer per file format (detected by content); index.ts registers them
-  dashboard/        GET /api/dashboard: one module per page (sessions, training, body, whoop, nutrition, plan, tests…)
+  dashboard/        GET /api/dashboard: one module per page (sessions, training, body, whoop, nutrition, plan, tests…);
+                    bests.ts = Training → Personal bests (Strava best efforts, swim/ride bests, heaviest FitnessAI sets)
   memory.ts         coach memory: notes (+ optional recall with OLLAMA_URL)
   sample.ts         sample-mode generator (separate process, throwaway database; never touches data/)
   update.ts         new-version check (git fetch origin main) and one-click update (merge); Settings → Updates

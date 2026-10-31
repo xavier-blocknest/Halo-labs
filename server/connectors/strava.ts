@@ -4,7 +4,7 @@
 // Activities map to the same canonical records as the bulk-export CSV (import/strava.ts), keyed by id.
 import { db, readRecords, upsertRecords } from '../db.ts'
 import { apiActivityRow, apiGearRows, type ApiActivity, type ApiAthlete } from '../import/strava.ts'
-import type { StravaGear } from '../model.ts'
+import type { StravaActivity, StravaGear } from '../model.ts'
 import { accessToken } from '../oauth.ts'
 import { getJson } from './http.ts'
 
@@ -33,9 +33,15 @@ export async function syncStrava(): Promise<number> {
   // Detail (calories, device, description) only for activities seen for the first time; older history
   // already has these from the bulk export. Capped per run to stay inside the read limit.
   const fresh = activities.filter(a => !known.has(String(a.id))).sort((a, b) => b.start_date.localeCompare(a.start_date)).slice(0, DETAIL_PER_RUN)
-  for (const a of fresh) {
+  // Then runs whose best efforts (personal bests) were never fetched, newest first, with what's left of the cap.
+  const isRun = (t: string) => /run/i.test(t) && !/virtual/i.test(t)
+  const backfill = readRecords<StravaActivity>('strava', 'activity').filter(r => isRun(r.data.type) && r.data.bestEfforts === undefined && !fresh.some(a => String(a.id) === r.id))
+    .sort((a, b) => (b.day ?? '').localeCompare(a.day ?? '')).slice(0, Math.max(0, DETAIL_PER_RUN - fresh.length)).map(r => ({ id: r.id }))
+  for (const a of [...fresh, ...backfill]) {
     const d = await getJson<ApiActivity>('Strava', `${BASE}/activities/${a.id}`, token)
-    n += upsertRecords([apiActivityRow(d, gearNames)]) // one at a time so a rate limit keeps progress
+    const row = apiActivityRow(d, gearNames), data = row.data as Partial<StravaActivity>
+    if (isRun(data.type ?? '') && !d.best_efforts) data.bestEfforts = [] // fetched, none: don't ask again
+    n += upsertRecords([row]) // one at a time so a rate limit keeps progress
   }
   return n
 }

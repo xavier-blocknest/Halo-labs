@@ -44,6 +44,9 @@ export type StravaActivity = {
   elapsedS: number | null; movingS: number | null; distanceM: number | null; elevGainM: number | null
   avgHr: number | null; maxHr: number | null; avgSpeed: number | null; maxSpeed: number | null
   calories: number | null; relativeEffort: number | null; gear: string | null; commute: boolean | null; device: string | null
+  // Runs only, from the activity detail (API): Strava's best efforts (fastest 1K, mile, 5K… inside the run). [] once
+  // fetched with none; undefined until the detail is fetched (bulk-export history, backfilled by the connector).
+  bestEfforts?: { name: string; distanceM: number; elapsedS: number }[]
 }
 
 /** strava/gear, id = gear id. */
