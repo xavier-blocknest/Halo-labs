@@ -91,7 +91,7 @@ cmd_phone() {
   wait_up
   bold "Open $name on the Mac and on the iPhone (Tailscale on)."
   setup_code
-  say "Also update the WHOOP and Strava redirect URLs to the new address (Settings → Sources shows them) and reconnect."
+  say "Also update the WHOOP and Strava redirect URLs to the new address (Settings → APIs shows them) and reconnect."
 }
 
 case "${1:-help}" in

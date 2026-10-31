@@ -1,9 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
+import { getSources } from './api'
 
 type Row = { id: string; group: string; label: string; secret: boolean; hint: string; placeholder?: string; set: boolean; from: 'app' | 'env' | null; value: string | null; last4: string | null }
 type Check = { ok: boolean; detail: string }
 
 const TESTS: Record<string, 'claude' | 'elevenlabs'> = { 'Claude (coach)': 'claude', 'ElevenLabs (voice)': 'elevenlabs' }
+const OAUTH: Record<string, 'whoop' | 'strava'> = { WHOOP: 'whoop', Strava: 'strava' }
+
+/** What to paste into the WHOOP / Strava developer settings, with a Copy button. */
+function Callback({ label, value, hint }: { label: string; value: string; hint: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => navigator.clipboard?.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }).catch(() => {})
+  return (
+    <div className="api-row">
+      <span className="api-label">{label}</span>
+      <span className="api-field">
+        <input className="api-input api-copy" readOnly value={value} onFocus={e => e.target.select()} aria-label={label} />
+        <button className="btn" type="button" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+      </span>
+      <span className="hint api-hint">{hint}</span>
+    </div>
+  )
+}
 
 /** Settings card: API keys and the athlete's name, stored encrypted on the server (server/settings.ts). Secret
  *  values are write-only here: the server only says whether one is set and its last 4 characters. */
@@ -13,7 +31,9 @@ export function ApiKeys() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; bad?: boolean } | null>(null)
   const [checks, setChecks] = useState<Record<string, Check | 'busy'>>({})
-  const [on, setOn] = useState<Record<string, boolean>>({}) // switched on or off here; otherwise on when anything is saved
+  const [on, setOn] = useState<Record<string, boolean>>({})
+  const [redirects, setRedirects] = useState<Record<string, string>>({})
+  useEffect(() => { getSources().then(d => setRedirects(Object.fromEntries(d.connectors.map(c => [c.id, c.redirectUri])))).catch(() => {}) }, []) // switched on or off here; otherwise on when anything is saved
 
   const load = useCallback(() => { fetch('/api/settings').then(r => r.json()).then(d => setRows(d.settings)).catch(() => {}) }, [])
   useEffect(load, [load])
@@ -80,6 +100,12 @@ export function ApiKeys() {
               </span>
             </div>
             {isOn(g) && check && check !== 'busy' && <p className={`hint ${check.ok ? 'good' : 'alert'}`}>{check.detail}</p>}
+            {isOn(g) && OAUTH[g] === 'whoop' && redirects.whoop && (
+              <Callback label="Redirect URL" value={redirects.whoop} hint="Paste this into your WHOOP app's Redirect URLs (developer.whoop.com → your app), exactly as shown." />
+            )}
+            {isOn(g) && OAUTH[g] === 'strava' && redirects.strava && (
+              <Callback label="Callback domain" value={new URL(redirects.strava).hostname} hint="Paste this into Authorization Callback Domain in your Strava API app (strava.com/settings/api)." />
+            )}
             {isOn(g) && rows.filter(r => r.group === g).map(r => (
               <label key={r.id} className="api-row">
                 <span className="api-label">{r.label}</span>

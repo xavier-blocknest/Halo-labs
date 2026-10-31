@@ -7,6 +7,7 @@ export type Connector = {
   syncing: boolean
   lastSync: string | null
   lastError: { finished_at: string; detail: string } | null
+  redirectUri: string // what to register in the service's developer settings (server/oauth.ts)
 }
 
 export type RecordCount = { source: string; kind: string; n: number; first: string | null; last: string | null; synced: string }

@@ -138,7 +138,7 @@ Base URL `https://www.strava.com/api/v3`. Pagination is `page` (default 1) and `
 
 ## How Halo Labs uses this
 
-**Redirect URLs.** Halo Labs shows the exact redirect URL for each service in Settings → Sources (from `PUBLIC_URL` in
+**Redirect URLs.** Halo Labs shows the exact redirect URL for each service in Settings → APIs (from `PUBLIC_URL` in
 `.env`, default `http://localhost:8787`):
 - WHOOP: register the full URL, `http://127.0.0.1:8787/oauth/whoop/callback`. On the default `PUBLIC_URL`, Halo Labs sends
   WHOOP the `127.0.0.1` form (loopback IPs are more widely accepted than `localhost`) and forwards the callback to

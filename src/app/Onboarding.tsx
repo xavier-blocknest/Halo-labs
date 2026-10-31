@@ -321,7 +321,7 @@ function VoiceStep({ saved, voiceId, onSaved, onNext, onBack }: { saved?: Settin
 
 function OAuthStep({ id, sources, settings, onSaved, onNext, onBack }: { id: 'whoop' | 'strava'; sources: Sources | null; settings: Setting[]; onSaved: () => void; onNext: () => void; onBack: () => void }) {
   const W = id === 'whoop', NAME = W ? 'WHOOP' : 'Strava', P = W ? 'WHOOP' : 'STRAVA'
-  const conn = sources?.connectors.find(c => c.id === id) as (Sources['connectors'][number] & { redirectUri?: string }) | undefined
+  const conn = sources?.connectors.find(c => c.id === id)
   const savedId = settings.find(s => s.id === `${P}_CLIENT_ID`), savedSecret = settings.find(s => s.id === `${P}_CLIENT_SECRET`)
   const [cid, setCid] = useState('')
   const [secret, setSecret] = useState('')

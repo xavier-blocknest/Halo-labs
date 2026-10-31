@@ -56,7 +56,7 @@ redirect URL `http://127.0.0.1:8787/oauth/whoop/callback` (WHOOP may not accept 
 **Strava app settings:** Authorization Callback Domain `localhost`.
 Then **Settings → Sources → Connect**. History backfills in the background.
 
-(Settings → Sources shows the exact redirect URL. If WHOOP refuses that address too, do step 4 first and use the
+(Settings → APIs → WHOOP and Strava show exactly what to paste, with a Copy button. If WHOOP refuses that address too, do step 4 first and use the
 `https://…ts.net` address instead.)
 
 Note on Strava: its API terms limit storing data and using it with AI. Halo Labs stores your Strava data and lets the
