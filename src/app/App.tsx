@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import '../styles/global.css'
 import { hydrateSharedState } from '../sync'
+import { setSample } from '../sampleMode'
 import './app.css'
 import { LockScreen } from './LockScreen'
 
@@ -14,6 +15,11 @@ const REFRESH_MS = 5 * 60_000
 const loadDashboard = () => import('../legacy/builders').then(() => import('../legacy/logic')).then(m => ({ default: m.Dashboard }))
 const Dashboard = lazy(loadDashboard)
 const Onboarding = lazy(() => import('./Onboarding').then(m => ({ default: m.Onboarding })))
+const FirstRun = lazy(() => import('./Onboarding').then(m => ({ default: m.FirstRun })))
+const SampleBanner = lazy(() => import('./Onboarding').then(m => ({ default: m.SampleBanner })))
+// First run: 'choose' (set up or sample data), 'setup' (the wizard), 'sample' (sample dashboard), 'done'.
+type Stage = 'choose' | 'setup' | 'sample' | 'done'
+const putOnboarding = (body: object) => fetch('/api/onboarding', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 const PING_EVERY_MS = 60_000
 
 // A phone can keep the app open for days on an old build. When it comes back to the foreground, compare the entry
@@ -30,7 +36,8 @@ export function App() {
   const [auth, setAuth] = useState<Auth | null>(null)
   const [D, setD] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [onboarded, setOnboarded] = useState<boolean | null>(null)
+  const [stage, setStage] = useState<Stage | null>(null)
+  const sample = stage === 'sample'
   const lastActive = useRef(Date.now())
   const lastPing = useRef(0)
 
@@ -56,29 +63,34 @@ export function App() {
   }, [])
 
   const load = useCallback(() => {
-    fetch('/api/dashboard')
+    fetch(sample ? '/api/sample/dashboard' : '/api/dashboard')
       .then(r => (r.status === 401 ? (lock(), null) : r.ok ? r.json() : Promise.reject(new Error(`Server error ${r.status}`))))
       .then(d => { if (d) { setD(d); setError(null) } })
       .catch(e => setError(e.message))
-  }, [lock])
+  }, [lock, sample])
 
   // Opening or returning to the app: show what we have, then pull WHOOP if it's stale and redraw.
   const loadFresh = useCallback(() => {
     load()
+    if (sample) return
     fetch('/api/refresh', { method: 'POST' })
       .then(r => (r.ok ? r.json() : null))
       .then(j => { if (j?.synced) load() })
       .catch(() => {})
-  }, [load])
+  }, [load, sample])
 
-  // First run: the onboarding wizard until it's finished or skipped (saved server-side, so once per install).
+  // First run: choose setup or sample data, then the wizard, until it's finished or skipped (saved server-side,
+  // so once per install). A setup already in progress (its step is in localStorage) goes straight back to it.
   useEffect(() => {
-    if (!auth?.authenticated) { setOnboarded(null); return }
-    fetch('/api/onboarding').then(r => (r.ok ? r.json() : { done: true })).then(o => setOnboarded(!!o.done)).catch(() => setOnboarded(true))
+    if (!auth?.authenticated) { setStage(null); return }
+    fetch('/api/onboarding').then(r => (r.ok ? r.json() : { done: true }))
+      .then(o => setStage(o.done ? 'done' : o.mode === 'sample' ? 'sample' : localStorage.getItem('halo-onboarding') ? 'setup' : 'choose'))
+      .catch(() => setStage('done'))
   }, [auth?.authenticated])
+  useEffect(() => { setSample(sample); setD(null) }, [sample])
 
   useEffect(() => {
-    if (!auth?.authenticated) return
+    if (!auth?.authenticated || stage === null || stage === 'choose' || stage === 'setup') return
     const idleMs = auth.idleMinutes * 60_000
     const idleTooLong = () => Date.now() - lastActive.current > idleMs
     // Taps, clicks, keys and scrolling count as use; the background refresh does not.
@@ -94,19 +106,27 @@ export function App() {
     const idleTimer = setInterval(() => { if (idleTooLong()) lock() }, 15_000)
     const refresh = setInterval(load, REFRESH_MS)
     window.addEventListener('halolabs:data', load) // e.g. the roadmap was edited
-    hydrateSharedState().then(loadFresh)
+    // Sample mode never mirrors browser state to the server; real mode does (and drops anything left from the demo).
+    if (sample) loadFresh(); else hydrateSharedState().then(loadFresh)
     return () => {
       events.forEach(e => window.removeEventListener(e, onActivity, { capture: true }))
       document.removeEventListener('visibilitychange', onVisible)
       clearInterval(idleTimer); clearInterval(refresh)
       window.removeEventListener('halolabs:data', load)
     }
-  }, [auth?.authenticated, auth?.idleMinutes, load, loadFresh, lock])
+  }, [auth?.authenticated, auth?.idleMinutes, load, loadFresh, lock, stage, sample])
 
   if (!auth) return <div className="boot-wait">{error ? `Couldn't reach Halo Labs: ${error}` : ''}</div>
   if (!auth.authenticated) return <LockScreen setup={auth.setup} onUnlocked={checkAuth} />
-  if (onboarded === null) return <div className="boot-wait" />
-  if (!onboarded) return <Suspense fallback={<div className="boot-wait" />}><Onboarding onDone={() => { setOnboarded(true); load() }} /></Suspense>
-  if (!D) return <div className="boot-wait">{error ? `Couldn't load your data: ${error}` : ''}</div>
-  return <Suspense fallback={<div className="boot-wait" />}><Dashboard D={D} onLock={lock} /></Suspense>
+  const wait = <div className="boot-wait" />
+  if (stage === null) return wait
+  if (stage === 'choose') return <Suspense fallback={wait}><FirstRun onSetup={() => setStage('setup')} onSample={async () => { await putOnboarding({ done: false, mode: 'sample' }); setStage('sample') }} /></Suspense>
+  if (stage === 'setup') return <Suspense fallback={wait}><Onboarding onDone={() => setStage('done')} /></Suspense>
+  if (!D) return <div className="boot-wait">{error ? `Couldn't load your data: ${error}` : sample ? 'Loading the sample athlete…' : ''}</div>
+  return (
+    <Suspense fallback={wait}>
+      <Dashboard key={sample ? 'sample' : 'real'} D={D} onLock={lock} />
+      {sample && <SampleBanner onSetup={async () => { await putOnboarding({ done: false }); setStage('setup') }} />}
+    </Suspense>
+  )
 }

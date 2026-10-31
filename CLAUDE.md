@@ -11,6 +11,10 @@ them, verify them, commit them, and tell him in one or two plain sentences what 
 
 1. **No made-up data.** Every number, date and sentence on a page comes from the database (`/api/dashboard`) or saved
    state. When a source has nothing, show an empty state ("No WHOOP data yet"), never a placeholder or sample value.
+   The one exception is **sample mode** ("Explore with sample data" on first run): `server/sample.ts` generates a
+   made-up athlete in its own process and throwaway database, `/api/sample/dashboard` serves the result, and the
+   client (`src/sampleMode.ts`) blocks every write while it's on and shows a "Sample data" banner. Sample records must
+   never be written to the real database, and nothing else may use made-up values.
 2. **Health data stays on the Mac.** Never commit `data/`, `inbox/`, `.env` or any `*.db`; never upload, paste or
    print their contents. The only data that leaves the Mac: the text the coach sends to Claude, the audio sent to
    ElevenLabs for transcription, the reply text sent to ElevenLabs for speech, and (if set up) encrypted backups.
@@ -73,6 +77,7 @@ server/
   import/           one importer per file format (detected by content); index.ts registers them
   dashboard/        GET /api/dashboard: one module per page (sessions, training, body, whoop, nutrition, plan, tests…)
   memory.ts         coach memory: notes (+ optional recall with OLLAMA_URL)
+  sample.ts         sample-mode generator (separate process, throwaway database; never touches data/)
   journal.ts weekPlan.ts backup.ts uploadTokens.ts
 src/
   app/              React components: App (auth gate, onboarding gate, data loading), LockScreen, Onboarding (first-run
@@ -82,6 +87,7 @@ src/
                     builders.tsx (every page's view model + voice + coach prompts), View.tsx (page layout, reads only v.*)
   coachPersona.ts   coach personalities (Coach, Tough Love, the athlete's own)
   claude.ts voice.ts sync.ts   coach client, microphone capture, localStorage ↔ server sync for shared keys
+  sampleMode.ts     sample mode flag + write guard
 docs/               importing.md (formats), connectors.md (WHOOP/Strava API notes), operations.md, roadmap-template.json
 ```
 

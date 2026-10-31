@@ -4,6 +4,7 @@
 import React from 'react'
 import { startRecording, transcribe, voiceReady } from '../voice'
 import { activeCoach } from '../coachPersona'
+import { isSample } from '../sampleMode'
 import { VOICE, VoiceBlob } from '../app/VoiceBlob'
 import { A, AD, AGLOW, BACK_S, COMBO, Component, FRONT_S, G, ICONS, LINE_C, PAGES, R, SFX, T1, T2, T3, W, BodyScan, BootFx, setBootSteps } from './logic'
 
@@ -930,7 +931,7 @@ async function genBrief(force) {
   const root = document.querySelector('[data-screen-label="command"]'); if (!root) return
   this.setState({ briefBusy: true })
   const txt = root.innerText.replace(/Morning brief[\s\S]*?(?=Today's call)/, '').replace(/\n{2,}/g, '\n').slice(0, 6000)
-  const sys = activeCoach().persona + '\n\nTASK\nWrite his morning brief for the dashboard, in your voice: only what matters today, no over-explaining. Use only the data given. Give intensity as a heart-rate zone ("Zone 2"), not a bpm range. Return ONLY JSON: {"changed": string, "today": string, "focus": string}. changed = what moved overnight (recovery, HRV, sleep, anything notable) with numbers, max 28 words. today = the plan and why, max 28 words. focus = the single most important action today, max 18 words, imperative. Plain sentences, no markdown, no emoji.\n\n' + chatProfile(D)
+  const sys = activeCoach().persona + SAMPLE_NOTE() + '\n\nTASK\nWrite his morning brief for the dashboard, in your voice: only what matters today, no over-explaining. Use only the data given. Give intensity as a heart-rate zone ("Zone 2"), not a bpm range. Return ONLY JSON: {"changed": string, "today": string, "focus": string}. changed = what moved overnight (recovery, HRV, sleep, anything notable) with numbers, max 28 words. today = the plan and why, max 28 words. focus = the single most important action today, max 18 words, imperative. Plain sentences, no markdown, no emoji.\n\n' + chatProfile(D)
   let out = null; try { out = await window.claude.complete({ max_tokens: 400, system: sys, messages: [{ role: 'user', content: 'Overview page right now:\n' + txt }] }) } catch (e) {}
   let j = null; try { j = JSON.parse((out || '').replace(/^[^{]*/, '').replace(/[^}]*$/, '')) } catch (e) {}
   const at = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
@@ -948,8 +949,10 @@ function chatContext() {
 }
 
 /** The Coach's system prompt: rules, the athlete's profile from the data, and what's on screen. */
+const SAMPLE_NOTE = () => (isSample() ? '\n\nDEMO\nThis dashboard is showing SAMPLE data: a made-up athlete\'s year, so the athlete can see how Halo Labs works before connecting anything. Coach exactly as you would with real data, and if asked, say plainly that the numbers are sample data and that setup (the banner at the top) brings in his own.' : '')
+
 function chatSystem() {
-  return activeCoach().persona + '\n\nRULES\nYou live inside the athlete\'s personal training dashboard. Answer using his real numbers from the profile and the page content below. Lead with the answer, then the supporting points or concrete actions with numbers (distances, grams, times). Give run and ride intensity as a heart-rate zone from his VO2 test ("Zone 2"), not a bpm range; he runs by zone. Aim for about 80 to 200 words; go longer only when the question needs it or he asks for detail. Plain text only: no markdown headers, no bold, no tables; use "• " for bullets. If the data needed isn\'t available, say so briefly. For lab results or pain, give general guidance and suggest a doctor or physio where appropriate; never diagnose.\n\n' + chatProfile(this.props.D) + '\n\n' + this.chatContext()
+  return activeCoach().persona + SAMPLE_NOTE() + '\n\nRULES\nYou live inside the athlete\'s personal training dashboard. Answer using his real numbers from the profile and the page content below. Lead with the answer, then the supporting points or concrete actions with numbers (distances, grams, times). Give run and ride intensity as a heart-rate zone from his VO2 test ("Zone 2"), not a bpm range; he runs by zone. Aim for about 80 to 200 words; go longer only when the question needs it or he asks for detail. Plain text only: no markdown headers, no bold, no tables; use "• " for bullets. If the data needed isn\'t available, say so briefly. For lab results or pain, give general guidance and suggest a doctor or physio where appropriate; never diagnose.\n\n' + chatProfile(this.props.D) + '\n\n' + this.chatContext()
 }
 
 async function chatSend(text) {

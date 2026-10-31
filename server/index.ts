@@ -2,6 +2,7 @@
 // Runs in Docker on the owner's Mac (docker-compose.yml publishes it on 127.0.0.1:8787 only).
 // Run: node server/index.ts   (Node 24 runs TypeScript directly)
 import Anthropic from '@anthropic-ai/sdk'
+import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { dirname, extname, join, normalize } from 'node:path'
@@ -21,6 +22,7 @@ import { importUpload, initImports, scanInbox, startInboxWatcher } from './impor
 import { authorizeUrl, disconnect, handleCallback, isConfigured, isConnected, redirectUri, type Provider } from './oauth.ts'
 import { isSyncing, startScheduler, syncIfStale, syncNow } from './sync.ts'
 import { listSettings, onSettingsChange, saveSettings, setting } from './settings.ts'
+import { TZ } from './model.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 process.umask(0o077) // health data: every file the server creates is readable by this user only
@@ -222,6 +224,19 @@ async function tts(req: IncomingMessage, res: ServerResponse) {
   const reader = r.body.getReader()
   for (;;) { const { done, value } = await reader.read(); if (done) break; res.write(value) }
   res.end()
+}
+
+/** Sample data for "Explore with sample data": server/sample.ts runs in its own process with a throwaway database
+ *  (it never sees the real one, or its key, or any API key) and prints the dashboard. Cached for the day. */
+let sample: { day: string; data: unknown } | null = null
+async function sampleDashboard() {
+  const day = new Date().toDateString()
+  if (sample?.day === day) return sample.data
+  const env = { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', TMPDIR: process.env.TMPDIR ?? '', HALO_TZ: TZ, HALO_NAME: setting('HALO_NAME') || 'Alex' }
+  const out = await new Promise<string>((resolve, reject) => execFile(process.execPath, [join(ROOT, 'server', 'sample.ts')], { env, maxBuffer: 20e6, timeout: 60_000 },
+    (err, stdout, stderr) => (err ? reject(new Error(`sample data: ${stderr.split('\n').filter(Boolean).at(-1) ?? err.message}`)) : resolve(stdout))))
+  sample = { day, data: JSON.parse(out) }
+  return sample.data
 }
 
 /** Settings → APIs: list (no secret values), save, and a quick check that a key works. */
@@ -467,13 +482,15 @@ createServer(async (req, res) => {
       // First-run setup (src/app/Onboarding.tsx): done flag plus the answers (services picked, data he has), encrypted.
       if (req.method === 'GET') return send(res, 200, getSecret('onboarding') ?? { done: false })
       if (req.method === 'PUT') {
-        const b = JSON.parse(await readBody(req)) as { done?: boolean; services?: unknown; have?: unknown }
+        const b = JSON.parse(await readBody(req)) as { done?: boolean; services?: unknown; have?: unknown; mode?: unknown }
         const list = (x: unknown) => (Array.isArray(x) ? x.filter(v => typeof v === 'string' && v.length < 40).slice(0, 20) : [])
-        const o = { done: b.done === true, at: new Date().toISOString(), services: list(b.services), have: list(b.have) }
+        // mode 'sample': exploring with sample data (first-run choice); cleared when setup starts or finishes.
+        const o = { done: b.done === true, at: new Date().toISOString(), services: list(b.services), have: list(b.have), mode: b.mode === 'sample' && b.done !== true ? 'sample' : null }
         setSecret('onboarding', o)
         return send(res, 200, o)
       }
     }
+    if (url.pathname === '/api/sample/dashboard') return send(res, 200, await sampleDashboard())
     if (url.pathname === '/api/recovery-kit/status') return send(res, 200, { downloaded: getSecret<string>('recovery:downloaded') })
     if (url.pathname === '/api/recovery-kit' && req.method === 'GET') {
       const at = new Date().toISOString()

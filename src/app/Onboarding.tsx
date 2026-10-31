@@ -454,7 +454,8 @@ function More({ have, onChange, onUploaded, onNext, onBack }: { have: HaveId[]; 
 
 function CoachStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const [id, setId] = useState<string>(() => { try { return localStorage.getItem('im4-coach') ?? 'coach' } catch { return 'coach' } })
-  const pick = (c: string) => { setId(c); setCoach(c as 'coach' | 'tough') }
+  // Saved to the server too: during setup the browser↔server state sync isn't running yet.
+  const pick = (c: string) => { setId(c); setCoach(c as 'coach' | 'tough'); void fetch('/api/state/im4-coach', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: c }) }
   return (
     <Step eyebrow="Your coach" title="How should your coach talk to you?"
       lead="Same data, same rules, different personality. You can switch any time, or write your own coach in Settings."
@@ -499,6 +500,52 @@ function Done({ name, services, settings, sources, onFinish, onBack }: { name: s
   )
 }
 
+// ---- first run: set up, or look around with sample data -------------------------------------------------------
+
+export function FirstRun({ onSetup, onSample }: { onSetup: () => void; onSample: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="onb">
+      <div className="onb-glow" aria-hidden />
+      <header className="onb-top"><div className="onb-brand"><span className="onb-ring" aria-hidden /><span>HALO<small>LABS</small></span></div></header>
+      <main className="onb-stage fwd">
+        <section className="onb-step onb-first">
+          <p className="onb-eyebrow">Welcome</p>
+          <h1>Your training, recovery and health, <span className="onb-accent">in one place</span>.</h1>
+          <p className="onb-lead">Set it up with your own apps and results, or look around first with a made-up athlete's year to see what Halo Labs does once everything is connected.</p>
+          <div className="onb-choices">
+            <button className="onb-choice primary" onClick={onSetup} disabled={busy}>
+              <span className="onb-tile-icon"><IconSpark /></span>
+              <span className="onb-choice-tag">Recommended</span>
+              <span className="onb-choice-name">Set up Halo Labs</span>
+              <span className="onb-tile-what">A guided setup: your name, the services you use, your lab results and other data. About 10 minutes; skip anything you like.</span>
+              <span className="onb-choice-go">Start setup →</span>
+            </button>
+            <button className="onb-choice" disabled={busy} onClick={async () => { setBusy(true); try { await onSample() } finally { setBusy(false) } }}>
+              <span className="onb-tile-icon"><IconEye /></span>
+              <span className="onb-choice-tag">No setup needed</span>
+              <span className="onb-choice-name">Explore with sample data</span>
+              <span className="onb-tile-what">Every page filled in: recovery, training, strength, nutrition, labs, DEXA and a race roadmap. Nothing is real and nothing is saved; switch to setup any time.</span>
+              <span className="onb-choice-go">{busy ? 'Loading the sample athlete…' : 'Show me around →'}</span>
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}
+
+/** The bar shown over the dashboard in sample mode. */
+export function SampleBanner({ onSetup }: { onSetup: () => void }) {
+  return (
+    <div className="sample-bar" role="status">
+      <span className="sample-dot" aria-hidden />
+      <span className="sample-text"><b>Sample data</b><span> · made up, nothing is saved</span></span>
+      <button onClick={onSetup}>Set up Halo Labs →</button>
+    </div>
+  )
+}
+
 // ---- icons (stroke, 24px) ---------------------------------------------------------------------------------
 
 const svg = (d: ReactNode) => <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
@@ -512,4 +559,5 @@ function IconShield() { return svg(<path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5
 function IconHeart() { return svg(<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" />) }
 function IconUp() { return svg(<><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></>) }
 function IconCheck() { return svg(<><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.5 2.5L16 9.5" /></>) }
+function IconEye() { return svg(<><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>) }
 function IconFlame() { return svg(<path d="M12 21c-3.5 0-6-2.4-6-5.6 0-3.8 3.5-5.4 3.5-9.4 2.8 1.6 4 3.6 4 5.6 1-.6 1.6-1.6 1.8-2.8 1.6 1.5 2.7 3.6 2.7 6.4 0 3.3-2.5 5.8-6 5.8z" />) }

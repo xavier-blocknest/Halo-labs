@@ -26,6 +26,10 @@ cd ~/halolabs
 
 This writes your settings file, builds and starts Halo Labs, opens it in your browser, and prints a **setup code**.
 
+After creating your passkey you can choose **Set up Halo Labs** or **Explore with sample data**. Sample data
+fills every page with a made-up athlete's year, so you can see how it all works before connecting anything. Nothing
+is saved in sample mode, and the **Set up Halo Labs** button on the banner starts the real setup whenever you're ready.
+
 1. On the lock screen, enter the setup code and create a **passkey** (Touch ID; it's saved in iCloud Keychain).
 2. A **setup guide** walks you through the rest: your name, where your data lives, the recovery key, which services
    to switch on (AI coach, WHOOP, Strava, voice) with step-by-step instructions for each key, your Quest lab PDFs,
