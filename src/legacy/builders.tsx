@@ -212,8 +212,11 @@ function plannedOn(D, day) {
 }
 
 function weekData() {
-  const D = this.props.D, t = D.training, plan = D.plan, wp = D.weekPlans
-  if (!t || !wp) return { wkBudget: [], wkDays: [], wk: null }
+  const D = this.props.D, plan = D.plan, wp = D.weekPlans
+  if (!wp) return { wkBudget: [], wkDays: [], wk: null }
+  // No activity data yet (no WHOOP/Strava): still show the plan, with this week's dates and nothing marked done or missed.
+  const live = !!D.training
+  const t = D.training ?? { weekDays: Array.from({ length: 7 }, (_, i) => { const day = plusDays(wp.thisStart, i); return { day, items: [], today: day === D.today, future: day > D.today } }) }
   const SPORT = { run: 'Run', ride: 'Ride', swim: 'Swim', walk: 'Walk', strength: 'Lift', other: 'Activity' }
   const describe = it => `${SPORT[it.sport]} · ${it.mi != null ? it.mi + ' mi' : it.yd != null ? it.yd.toLocaleString() + ' yd' : it.min + ' min'}`
   // Tabs: this week, next week, and any saved weeks further ahead (by their Monday).
@@ -229,14 +232,14 @@ function weekData() {
     const sessions = plannedOn(D, day).sessions
     const rows = sessions.map(x => {
       const done = TRACKED.has(x.sport) && left[x.sport] > 0; if (done) left[x.sport]--
-      const tag = x.sport === 'rest' ? (!future && !items.length ? 'Rest' : '') : done ? 'Done' : future ? (deload && x.sport === 'strength' ? 'Deload' : '') : today ? 'Today' : TRACKED.has(x.sport) ? 'Missed' : ''
+      const tag = x.sport === 'rest' ? (live && !future && !items.length ? 'Rest' : '') : done ? 'Done' : future ? (deload && x.sport === 'strength' ? 'Deload' : '') : today ? 'Today' : live && TRACKED.has(x.sport) ? 'Missed' : ''
       const tc = tag === 'Done' ? G : tag === 'Missed' ? R : tag === 'Today' ? A : T3
       return { t: x.title + (deload && x.sport === 'strength' ? ` · ${Math.round(plan.deload.fraction * 100)}%` : ''), detail: x.detail, sport: x.sport,
         fg: tag === 'Missed' ? T3 : T1, td: tag === 'Missed' ? 'line-through' : 'none', tag, tc, to: tag ? 1 : 0 }
     })
     return { day, d: fmtDay(day, { weekday: 'short' }), date: fmtDay(day, { month: 'short', day: 'numeric' }), today, sessions,
-      plan: rows.length ? rows : [{ t: future ? 'Nothing planned' : items.length ? 'Nothing planned' : 'No activity', detail: '', fg: T3, td: 'none', tag: '', tc: T3, to: 0 }],
-      actual: items.length ? items.map(describe).join(' · ') : future ? '' : '—', showActual: sel === 'this',
+      plan: rows.length ? rows : [{ t: future || !live ? 'Nothing planned' : items.length ? 'Nothing planned' : 'No activity', detail: '', fg: T3, td: 'none', tag: '', tc: T3, to: 0 }],
+      actual: items.length ? items.map(describe).join(' · ') : future ? '' : '—', showActual: live && sel === 'this',
       src: items.length ? `${items.reduce((a, it) => a + it.min, 0)} min total` : '', ac: items.length ? G : T3,
       dc: today ? A : T1, b: today ? '1px solid oklch(0.82 0.13 210 / 0.35)' : '1px solid ' + LINE_C, bg: today ? 'oklch(0.82 0.13 210 / 0.06)' : 'oklch(1 0 0 / 0.015)' }
   })
@@ -245,7 +248,7 @@ function weekData() {
   const count = sp => tp ? Object.values(tp.days).flat().filter(x => x.sport === sp).length : null
   const b = (k, key, planned) => { const goal = Math.max(1, planned ?? Math.round(c.avg4[key]))
     return { k, done: c.now[key], goal, pct: Math.min(100, Math.round(c.now[key] / goal * 100)) + '%', note: (planned != null ? `Plan ${planned} this week · ` : '') + `usual ${c.avg4[key]}`, c: A, nc: T3 } }
-  const wkBudget = tp
+  const wkBudget = !live ? [] : tp
     ? [b('Strength', 'strength', count('strength')), b('Runs', 'runs', count('run')), b('Swims', 'swims', count('swim')), b('Rides', 'rides', count('ride')), b('Active days', 'activeDays', 7)]
     : ws ? [b('Strength', 'strength', ws.strength), b('Runs', 'runs', ws.running), b('Swims', 'swims', ws.swimming), b('Active days', 'activeDays', 7)]
     : [b('Strength', 'strength'), b('Runs', 'runs'), b('Swims', 'swims'), b('Rides', 'rides'), b('Active days', 'activeDays')]
@@ -260,7 +263,7 @@ function weekData() {
   const end = plusDays(start, 6)
   return { wkBudget, wkDays: days, wk: {
     tabs: this.seg([['this', 'This week'], ['next', 'Next week'], ...later.map(w => [w.start, 'Week of ' + fmtDay(w.start)])], sel, id => this.setState({ wkSel: id })),
-    title: `${fmtDay(start)} – ${fmtDay(end)}` + (sel === 'this' ? ' · plan vs actual' : ' · coming up'),
+    title: `${fmtDay(start)} – ${fmtDay(end)}` + (sel === 'this' ? (live ? ' · plan vs actual' : ' · this week') : ' · coming up'),
     note: saved ? `${saved.by === 'coach' ? 'Planned with ' + activeCoach().name : 'Your plan'} · updated ${fmtDay(saved.updated.slice(0, 10))}` : plan ? 'From your roadmap\'s weekly template' : 'No plan yet',
     noteC: saved ? T2 : T3, deload: sel === 'this' && !saved && plan?.deload?.active ? `Deload week · ${Math.round(plan.deload.fraction * 100)}% weights` : '',
     targets: saved?.targets ?? [], notes: saved?.notes ?? [], saveDay, editable: true,
@@ -765,7 +768,7 @@ function headline(id, D, extra) {
   const w = D.whoop, t = D.training, f = D.fuel, b = D.body, h = new Date().getHours()
   switch (id) {
     case 'command': return `Good ${h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening'}, ${D.name}.`
-    case 'week': { if (!t) return 'No activity data yet.'; const c = t.weekCounts.now; return `This week so far: ${c.activeDays} active day${c.activeDays === 1 ? '' : 's'}, ${c.strength} strength, ${c.runs} run${c.runs === 1 ? '' : 's'}.` }
+    case 'week': { if (!t) return D.weekPlans?.this ? 'Your plan for this week. Connect WHOOP or Strava to check sessions off automatically.' : 'No activity data yet. Ask your coach to plan the week, or edit a day below.'; const c = t.weekCounts.now; return `This week so far: ${c.activeDays} active day${c.activeDays === 1 ? '' : 's'}, ${c.strength} strength, ${c.runs} run${c.runs === 1 ? '' : 's'}.` }
     case 'training': { if (!t) return 'No Strava data yet. Upload an export or connect Strava on Settings.'; const k = t.kpis
       return (t.streak ? `${t.streak} straight active days. ` : '') + `${k.runMonth.mi} run miles this month` + (k.runMonth.prevMi ? ` vs ${k.runMonth.prevMi} last month.` : '.') + (k.lastRide && k.lastRide.daysAgo > 14 ? ` No ride since ${fmtDay(k.lastRide.day)}.` : '') }
     case 'body': { const s = b?.scans ?? []; if (s.length >= 2) { const a = s[0], z = s.at(-1), df = z.fatLb - a.fatLb, dl = z.leanLb - a.leanLb
