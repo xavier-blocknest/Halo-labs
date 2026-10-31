@@ -8,7 +8,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib'
-import { AuthError, deletePasskey, initAuth, listPasskeys, loginOptions, loginVerify, logout, ping, registerOptions, registerVerify, session, setIdleMinutes, status } from './auth.ts'
+import { AuthError, deletePasskey, resetPasskeys, initAuth, listPasskeys, loginOptions, loginVerify, logout, ping, registerOptions, registerVerify, session, setIdleMinutes, status } from './auth.ts'
 import { loadKey } from './crypto.ts'
 import { backupStatus, runBackup, startBackups } from './backup.ts'
 import { backfillEmbeddings, embedStatus, forgetHistory, historyStats, initMemory, listNotes, memoryBlock, NOTE_KINDS, putNote, removeNote, saveTurn, seedFromChat, type NoteKind } from './memory.ts'
@@ -371,22 +371,24 @@ async function saveRoadmapDoc(req: IncomingMessage, res: ServerResponse) {
   send(res, 200, { ok: true })
 }
 
-/** POST /api/wipe {confirm: 'DELETE'}: Settings → Delete all data. Removes every record (workouts, recovery, labs,
+/** POST /api/wipe {confirm: 'DELETE', keys?, passkeys?}: Settings → Delete all data. Removes every record (workouts, recovery, labs,
  *  food, journal, roadmap, week plans, coach memory and chat), saved state, WHOOP/Strava connections, the import log,
  *  archived uploads and anything waiting in the inbox, and reopens the setup guide. Keeps what lets him back in and
  *  saves retyping: passkeys and sessions, API keys and settings, upload links, the idle lock, and the database key.
- *  Off-site backups are not touched. */
+ *  `keys` also clears every API key and setting (and the name); `passkeys` also removes every passkey, session and
+ *  upload link and returns a new setup code. Off-site backups (and the database key) are never touched. */
 async function wipeAll(req: IncomingMessage, res: ServerResponse) {
-  const { confirm } = JSON.parse(await readBody(req) || '{}') as { confirm?: string }
+  const { confirm, keys, passkeys } = JSON.parse(await readBody(req) || '{}') as { confirm?: string; keys?: boolean; passkeys?: boolean }
   if (confirm !== 'DELETE') throw new AuthError('Type DELETE to confirm.')
   if (isSyncing('whoop') || isSyncing('strava')) throw new AuthError('A sync is running. Try again in a minute.')
-  wipeData(['settings', 'auth:idleMinutes', 'upload-tokens', 'recovery:downloaded'])
+  wipeData(['settings', 'auth:idleMinutes', 'recovery:downloaded', ...(passkeys === true ? [] : ['upload-tokens'])])
+  if (keys === true) saveSettings(Object.fromEntries(listSettings().map(r => [r.id, '']))) // through settings.ts, so its listeners hear it
   forgetHistory() // resets the coach memory's in-process cache
   for (const dir of [join(ROOT, 'data', 'imports'), join(ROOT, 'inbox')])
     for (const f of existsSync(dir) ? readdirSync(dir) : []) rmSync(join(dir, f), { recursive: true, force: true })
   initImports(ROOT)
-  console.log('All data deleted from Settings (passkeys, API keys and settings kept).')
-  send(res, 200, { ok: true })
+  console.log(`All data deleted from Settings${keys === true ? ', with API keys' : ''}${passkeys === true ? ', with passkeys' : ''}.`)
+  send(res, 200, { ok: true, setupCode: passkeys === true ? resetPasskeys() : null })
 }
 
 async function hookImport(req: IncomingMessage, res: ServerResponse) {

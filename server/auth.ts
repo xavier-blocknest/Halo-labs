@@ -190,6 +190,16 @@ export function listPasskeys(req: IncomingMessage) {
     .map(p => ({ id: p.id, name: p.name, created: p.created_at, lastUsed: p.last_used_at, current: p.id === current }))
 }
 
+/** Settings → Delete all data, with "passkeys" ticked: removes every passkey and session (signing everyone out) and
+ *  writes a fresh setup code, returned so the page can show it before the lock screen asks for it. */
+export function resetPasskeys() {
+  db.exec('DELETE FROM sessions; DELETE FROM passkeys;')
+  const code = randomBytes(6).toString('hex').toUpperCase()
+  writeFileSync(setupCodeFile, code + '\n', { mode: 0o600 })
+  console.log(`All passkeys removed. Setup code: ${code} (also in data/setup-code; ./halo setup-code prints it)`)
+  return code
+}
+
 export function deletePasskey(id: string) {
   if (passkeyCount() <= 1) throw new AuthError('This is your only passkey. Add another before removing it.')
   db.prepare('DELETE FROM sessions WHERE passkey_id = ?').run(id)

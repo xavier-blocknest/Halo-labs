@@ -151,3 +151,7 @@
 .dp .card-warn { border-color: oklch(0.82 0.14 80 / 0.55); }
 .dp code { font-size: 12px; color: var(--t2); }
 @media (max-width: 560px) { .dp .api-row { grid-template-columns: 1fr; } .dp .api-hint { grid-column: 1; } }
+
+.dp .wipe-opt { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; cursor: pointer; }
+.dp .wipe-opt input { margin-top: 3px; accent-color: oklch(0.7 0.18 25); }
+.dp .wipe-opt .hint { display: inline; }

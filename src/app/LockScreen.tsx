@@ -30,7 +30,7 @@ const deviceName = () => {
 export function LockScreen({ setup, onUnlocked }: { setup: boolean; onUnlocked: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(() => { try { return sessionStorage.getItem('halo-setup-code') ?? '' } catch { return '' } }) // from Delete all data
   const secure = window.isSecureContext && !!window.PublicKeyCredential
 
   async function unlock() {
@@ -46,7 +46,7 @@ export function LockScreen({ setup, onUnlocked }: { setup: boolean; onUnlocked: 
 
   async function create() {
     setBusy(true); setError(null)
-    try { await addPasskey(deviceName(), code); onUnlocked() } catch (e) { setError(friendly(e)) }
+    try { await addPasskey(deviceName(), code); try { sessionStorage.removeItem('halo-setup-code') } catch { /* private mode */ } onUnlocked() } catch (e) { setError(friendly(e)) }
     setBusy(false)
   }
 
