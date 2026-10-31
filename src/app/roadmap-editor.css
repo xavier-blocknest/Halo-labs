@@ -1,0 +1,36 @@
+/* Roadmap editor (RoadmapEditor.tsx): a sheet over the Roadmap page, in the v4 tokens. */
+.rme-back { position: fixed; inset: 0; z-index: 80; background: oklch(0.1 0.01 262 / 0.7); backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; overflow-y: auto; }
+.rme { width: min(860px, 100%); border-radius: 18px; background: oklch(0.185 0.018 262); border: 1px solid oklch(1 0 0 / 0.1); box-shadow: 0 30px 80px oklch(0 0 0 / 0.5); padding: 22px; display: flex; flex-direction: column; gap: 16px; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.96 0.005 250); }
+.rme-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.rme-title { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 18px; font-weight: 500; letter-spacing: -0.01em; }
+.rme-sub, .rme-label { font-size: 12px; color: oklch(0.58 0.015 255); margin-top: 4px; }
+.rme-x { border: 0; background: transparent; color: oklch(0.74 0.015 255); font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.rme-list { display: flex; flex-direction: column; }
+.rme-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid oklch(1 0 0 / 0.07); }
+.rme-name { font-size: 13.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rme-badge { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; color: oklch(0.82 0.13 210); border: 1px solid oklch(0.82 0.13 210 / 0.4); }
+.rme-fields { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.rme-actions { display: flex; gap: 10px; justify-content: flex-end; white-space: nowrap; }
+.rme-in { font: inherit; font-size: 12.5px; color: oklch(0.96 0.005 250); background: oklch(1 0 0 / 0.04); border: 1px solid oklch(1 0 0 / 0.1); border-radius: 8px; padding: 6px 8px; min-width: 0; color-scheme: dark; }
+.rme-in:focus { outline: none; border-color: oklch(0.82 0.13 210 / 0.6); }
+.rme-grow { flex: 1 1 160px; }
+.rme-time { width: 92px; }
+.rme-fixed { font-size: 12.5px; color: oklch(0.74 0.015 255); padding: 6px 0; }
+.rme-mini { font-size: 12px; color: oklch(0.58 0.015 255); display: inline-flex; gap: 6px; align-items: center; }
+.rme-link { border: 0; background: transparent; color: oklch(0.74 0.015 255); font: inherit; font-size: 12px; cursor: pointer; padding: 4px 2px; }
+.rme-link:hover { color: oklch(0.96 0.005 250); }
+.rme-btn { font: inherit; font-size: 12.5px; cursor: pointer; border-radius: 8px; padding: 7px 14px; border: 1px solid oklch(0.82 0.13 210 / 0.45); background: transparent; color: oklch(0.82 0.13 210); }
+.rme-primary { background: oklch(0.82 0.13 210); color: oklch(0.18 0.03 230); border-color: transparent; font-weight: 500; }
+.rme-btn:disabled { opacity: 0.6; cursor: default; }
+.rme-add { border-top: 1px solid oklch(1 0 0 / 0.07); padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.rme-addrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.rme-hidden { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.rme-chip { font: inherit; font-size: 12px; cursor: pointer; border-radius: 999px; padding: 4px 10px; border: 1px dashed oklch(1 0 0 / 0.2); background: transparent; color: oklch(0.74 0.015 255); }
+.rme-err { font-size: 12.5px; color: oklch(0.7 0.18 25); }
+.rme-foot { display: flex; justify-content: flex-end; gap: 12px; align-items: center; }
+@media (max-width: 640px) {
+  .rme-back { padding: 0; }
+  .rme { border-radius: 0; min-height: 100%; }
+  .rme-row { grid-template-columns: 1fr; gap: 8px; }
+  .rme-actions { justify-content: flex-start; }
+}

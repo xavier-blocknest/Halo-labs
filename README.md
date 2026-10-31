@@ -1,0 +1,107 @@
+# Halo Labs
+
+Your personal training command center. It pulls in WHOOP and Strava, reads your exports (FitnessAI, Runna,
+MacroFactor, lab, DEXA and VO₂ reports), makes a daily Hard / Easy / Rest call, tracks your roadmap to your next race,
+and has an AI coach you can type or talk to.
+
+It runs on your Mac in Docker. Your data is stored encrypted in this folder and never leaves the Mac, except the text the coach
+sends to Claude and your voice going to ElevenLabs for transcription.
+
+---
+
+## 1. One-time setup (about 15 minutes)
+
+**You need:**
+- **Docker Desktop** ([docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)) or
+  **OrbStack** ([orbstack.dev](https://orbstack.dev), lighter and faster on a Mac). Install one and open it once.
+  In its settings, turn on **Start at login**, so Halo Labs comes back after a restart.
+- This folder somewhere permanent, e.g. `~/halolabs`.
+
+**Then, in Terminal:**
+
+```sh
+cd ~/halolabs
+./halo setup
+```
+
+This writes your settings file, builds and starts Halo Labs, opens it in your browser, and prints a **setup code**.
+
+1. On the lock screen, enter the setup code and create a **passkey** (Touch ID; it's saved in iCloud Keychain).
+2. Go to **Settings → APIs** and add your keys (next section). Press **Test** next to Claude and ElevenLabs.
+3. **Settings → Recovery kit → Download.** Put the file in your password manager and delete it from Downloads.
+   Without this key nobody (not even you) can read your data if the `.env` file is lost.
+
+Open it any time at **http://localhost:8787** (or `./halo open`).
+
+## 2. Your API keys (Settings → APIs)
+
+| Service | What for | Where to get it | Cost |
+|---|---|---|---|
+| **Claude** | the coach, morning brief, coach memory, journal formatting | [console.anthropic.com](https://console.anthropic.com) → API keys (add a few dollars of credit) | pay per use, typically cents a day |
+| **ElevenLabs** | voice: hearing you (speech-to-text) and the coach's voice | [elevenlabs.io](https://elevenlabs.io) → Developers → API keys; then Voices → pick a voice → copy its **Voice ID** | free plan ≈ 10k characters/month; when it runs out the coach uses your device's built-in voice |
+| **WHOOP** | live recovery, sleep, strain, workouts | [developer.whoop.com](https://developer.whoop.com) → create a team and an app | free |
+| **Strava** | live runs, rides, swims | [strava.com/settings/api](https://www.strava.com/settings/api) → create an app | free |
+| Backblaze B2 *(optional)* | nightly encrypted off-site backup | [backblaze.com](https://www.backblaze.com/cloud-storage) → a private bucket + application key | ~free at this size |
+
+**WHOOP app settings:** scopes `read:recovery read:cycles read:workout read:sleep read:body_measurement` and `offline`;
+redirect URL `http://localhost:8787/oauth/whoop/callback`.
+**Strava app settings:** Authorization Callback Domain `localhost`.
+Then **Settings → Sources → Connect**. History backfills in the background.
+
+(Settings → Sources shows the exact redirect URL. If WHOOP refuses a `localhost` address, do step 4 first and use the
+`https://…ts.net` address instead.)
+
+Note on Strava: its API terms limit storing data and using it with AI. Halo Labs stores your Strava data and lets the
+coach read it. That's your call; the alternative is to leave Strava disconnected and upload Strava's bulk export.
+
+## 3. Adding data
+
+- **Settings → Upload data**: drag in exports or PDFs (or a zip of them). Files are recognized by their content.
+  See [docs/importing.md](docs/importing.md) for every supported format.
+- **Roadmap**: copy [docs/roadmap-template.json](docs/roadmap-template.json), fill it in with your goal race and milestones
+  (or ask Claude to fill it in from a description of your goals), and upload it. After that you can edit races and dates
+  in the app.
+- **Coach**: Settings → Coach picks the personality (**Coach**, **Tough Love**, or **write your own**). Tell it things to
+  remember ("remember I'm allergic to shellfish"); they show up under Settings → Coach memory.
+
+## 4. Using it on your iPhone (optional)
+
+The Mac address (`localhost`) only works on the Mac. For the iPhone (and the upload Shortcut):
+
+1. Install **Tailscale** on the Mac and the iPhone ([tailscale.com/download](https://tailscale.com/download)), signed in to the same account.
+2. In the Tailscale admin console → DNS, turn on **MagicDNS** and **HTTPS Certificates**.
+3. Run `./halo phone`. Halo Labs moves to an address like `https://your-mac.tailXXXX.ts.net` on both devices.
+   Passkeys are tied to the address, so you'll create a new one with a new setup code (printed for you).
+4. Update the WHOOP and Strava redirect URLs to the new address and reconnect them.
+
+It's private to your Tailscale account: nobody else can reach it. The Mac has to be awake for the phone to reach it.
+
+## 5. Everyday commands
+
+```
+./halo start | stop | restart     ./halo status       ./halo logs
+./halo open                       ./halo setup-code   ./halo reset-passkeys
+```
+
+Halo Labs keeps syncing while the browser is closed, as long as the Mac is awake and Docker is running. While the Mac
+sleeps, syncing pauses and catches up when it wakes.
+
+## 6. Changing the app with Claude
+
+Claude (Claude Code, or Dispatch from your phone) can change this app: ask in plain words, for example "add a card that
+shows my weekly running mileage". [CLAUDE.md](CLAUDE.md) gives Claude the map of the code and the rules.
+Edits go live by themselves (no rebuild). The folder is a git repository, so every change can be undone:
+`git log` to see changes, `git revert <id>` to undo one.
+
+## 7. If something goes wrong
+
+| Problem | Fix |
+|---|---|
+| The page doesn't load | `./halo status`; if not running, `./halo start`; still broken: `./halo logs` |
+| Lost every passkey | `./halo reset-passkeys`, then use the new setup code |
+| Coach says it's offline | Settings → APIs → Claude → Test (key wrong, or no credit left) |
+| Voice doesn't work | Settings → APIs → ElevenLabs → Test; allow the microphone in the browser |
+| WHOOP / Strava stopped syncing | Settings → Sources shows the error; Disconnect and Connect again |
+| New Mac or broken disk | see [docs/operations.md](docs/operations.md) → Moving or restoring |
+
+**Never delete or edit the `HALO_DB_KEY` line in `.env`.** Never share `.env` or the `data/` folder.

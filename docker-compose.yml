@@ -1,0 +1,16 @@
+# Halo Labs on your Mac. Start with ./halo start (or: docker compose up -d --build).
+services:
+  halolabs:
+    build: .
+    image: halolabs:local
+    container_name: halolabs
+    restart: unless-stopped        # comes back after a reboot once Docker Desktop starts at login
+    ports:
+      - "127.0.0.1:8787:8787"      # only this Mac can reach it (phones go through Tailscale, see README)
+    volumes:
+      - .:/app                     # the code, .env (database key) and data/ live in this folder on the Mac
+      - node_modules:/app/node_modules   # Linux packages stay inside Docker, not in the Mac folder
+    environment:
+      HOST: 0.0.0.0
+volumes:
+  node_modules:

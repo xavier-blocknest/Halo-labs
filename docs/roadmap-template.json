@@ -1,0 +1,57 @@
+{
+  "title": "My roadmap",
+  "as_of_date": "2027-01-01",
+  "primary_goal": {
+    "event": "Name of your main race or goal",
+    "date": "2027-06-01",
+    "location": "City, State",
+    "objective": "One sentence: what finishing well looks like.",
+    "registered_on": null,
+    "distances": { "swim_km": 1.9, "bike_km": 90, "run_km": 21.1 }
+  },
+  "milestones": [
+    { "name": "A first race or checkpoint", "date": "2027-03-01", "status": "planned", "target_time": null },
+    { "name": "A block of training", "date_range": "spring 2027", "status": "planned" },
+    { "name": "Name of your main race or goal", "date": "2027-06-01", "status": "goal" }
+  ],
+  "current_training_schedule": {
+    "weekly_sessions": { "strength": 2, "running": 2, "swimming": 1 },
+    "note": "Anything the coach should know about the week.",
+    "monday": ["Strength: upper body"],
+    "tuesday": ["Zone 2 run, 40 min"],
+    "wednesday": ["Swim technique"],
+    "thursday": ["Strength: lower body"],
+    "friday": ["Rest"],
+    "saturday": ["Long run"],
+    "sunday": ["Bike, easy"]
+  },
+  "running": {
+    "current_comfortable_distance_miles": 3,
+    "days": ["tuesday", "saturday"],
+    "future_progression": ["10K", "Half marathon"],
+    "next_event": "A first race or checkpoint"
+  },
+  "swimming": {
+    "coach_hired": false,
+    "current_frequency": "once a week",
+    "current_focus": ["breathing", "technique"],
+    "training_phases": [
+      { "name": "Technique", "period": "winter 2026–27", "focus": "Comfortable continuous swimming" },
+      { "name": "Endurance", "period": "spring 2027", "focus": "Race distance in the pool" }
+    ]
+  },
+  "cycling": {
+    "priority": "Build a base on the bike",
+    "bike_owned": false,
+    "bike_budget_usd_max": null,
+    "preferred_purchase": "",
+    "fitting_status": "",
+    "equipment_status": {},
+    "gym_bikes": "Spin bike at the gym until a bike is bought"
+  },
+  "deload": null,
+  "planning_principles": ["Build volume slowly", "Strength twice a week"],
+  "recovery_priorities": ["Sleep 8 hours", "One full rest day a week"],
+  "unknown_or_unconfirmed": [],
+  "other_events": {}
+}
