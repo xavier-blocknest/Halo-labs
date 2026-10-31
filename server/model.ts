@@ -152,3 +152,10 @@ export type JournalEntry = {
   date: string; time?: string | null; title: string; body: string; note?: string; updated: string
   doc?: { from: string; tags: string[]; tldr: { k: string; v: string }[]; blocks: JournalBlock[] } | null
 }
+
+/** calendar/event, id = random. An event the athlete adds on the Calendar page (appointment, doctor consultation, …).
+ *  `time` is local "HH:MM" or null for all-day. */
+export type CalendarEvent = {
+  title: string; date: string; time: string | null; kind: 'appointment' | 'doctor' | 'race' | 'event' | 'other'
+  location: string; note: string; updated: string
+}

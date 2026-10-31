@@ -19,6 +19,7 @@ import { buildSessions, SOURCE_CHOICES, SOURCE_SPORTS, SOURCES_KEY, sourcePrefs,
 import { parseWhen, roadmapDoc, roadmapEdits, SCHEDULE_DAYS, STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
 import { today } from './dashboard/time.ts'
 import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry } from './journal.ts'
+import { deleteEvent, EVENT_ID, saveEvent } from './calendar.ts'
 import { SAVE_WEEK_PLAN_TOOL, saveWeekPlan } from './weekPlan.ts'
 import { importUpload, initImports, scanInbox, startInboxWatcher } from './import/index.ts'
 import { authorizeUrl, disconnect, handleCallback, isConfigured, isConnected, onLocalhost, publicUrl, redirectUri, type Provider } from './oauth.ts'
@@ -620,6 +621,14 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     if (wp && req.method === 'PUT') {
       try { return send(res, 200, { plan: saveWeekPlan({ ...JSON.parse(await readBody(req)), week_start: wp[1] }, 'you') }) }
       catch (e) { return send(res, 400, { error: (e as Error).message }) }
+    }
+    const cm = /^\/api\/calendar\/([^/]+)$/.exec(url.pathname)
+    if (cm) {
+      if (!EVENT_ID.test(cm[1])) return send(res, 400, { error: 'Bad event id.' })
+      try {
+        if (req.method === 'PUT') return send(res, 200, { event: saveEvent(cm[1], JSON.parse(await readBody(req))) })
+        if (req.method === 'DELETE') { deleteEvent(cm[1]); return send(res, 200, { ok: true }) }
+      } catch (e) { return send(res, 400, { error: (e as Error).message }) }
     }
     if (url.pathname === '/api/journal' && req.method === 'GET') return send(res, 200, { entries: journalEntries() })
     const jm = /^\/api\/journal\/([^/]+)(\/format)?$/.exec(url.pathname)

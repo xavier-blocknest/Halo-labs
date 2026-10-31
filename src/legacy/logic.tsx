@@ -31,7 +31,7 @@ export const COMBO = {"Chest":["Upper Chest","Lower Chest"],"Abs":["Upper Abs","
 let BOOT_STEPS: [string, string][] = [];
 export const setBootSteps = (steps: [string, string][]) => { BOOT_STEPS = steps; };
 export const PAGES = [
-  { id: 'command', label: 'Overview' }, { id: 'week', label: 'Week' }, { id: 'roadmap', label: 'Roadmap' }, { id: 'training', label: 'Training' }, { id: 'body', label: 'Body' },
+  { id: 'command', label: 'Overview' }, { id: 'week', label: 'Week' }, { id: 'calendar', label: 'Calendar' }, { id: 'roadmap', label: 'Roadmap' }, { id: 'training', label: 'Training' }, { id: 'body', label: 'Body' },
   { id: 'recovery', label: 'Recovery' }, { id: 'fuel', label: 'Nutrition' }, { id: 'blood', label: 'Tests' }, { id: 'journal', label: 'Journal' }, { id: 'settings', label: 'Settings' },
 ];
 export const CHAT_SUGG = {
@@ -43,6 +43,7 @@ export const CHAT_SUGG = {
   recovery: ['Why is my HRV where it is?', 'Am I overreaching?', 'What does my respiratory rate tell me?', 'How consistent is my sleep?'],
   fuel: ['How am I doing on my nutrition protocol?', 'What should I eat today to hit my targets?', 'Which diet allowances do I have left?', 'How is my weight trending?'],
   blood: ['What should I ask my doctor about?', 'Which markers changed the most?', 'What does my VO₂ max mean for training zones?'],
+  calendar: ['What\'s coming up in the next two weeks?', 'How should I plan training around my appointments?', 'What should I prepare for my next doctor visit?'],
   journal: ['What did my doctor recommend?', 'Am I following my doctor\'s plan?', 'What should I ask at my follow-up?'],
   settings: ['Which sources are out of date?', 'What data would improve the coaching most?'],
 };
@@ -229,7 +230,7 @@ export const SFX = {
   }
 };
 SFX.bootEl = SFX.mkAudio('loading'); SFX.welcomeEl = SFX.mkAudio('welcome'); window.__SFX = SFX;
-export const ICONS = { command: 'M12 3v3M12 18v3M3 12h3M18 12h3M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8', week: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', roadmap: 'M5 21V4M5 4h11l-2 4l2 4H5', training: 'M3 12h4l3-8l4 16l3-8h4', body: 'M12 3a2 2 0 1 0 0 4a2 2 0 1 0 0-4M6 9.5h12M12 9.5V15M12 15l-3 6M12 15l3 6', recovery: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z', fuel: 'M4 3v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V3M7 3v18M20 15V3a4.5 4.5 0 0 0-4.5 4.5V13a2 2 0 0 0 2 2H20zm0 0v6', blood: 'M9 3h6M10 3v6l-5 10a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3', journal: 'M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6zM6 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2M9 8h6M9 12h6M9 16h3', settings: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4', more: 'M5 12h.01M12 12h.01M19 12h.01', soundOn: 'M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12', soundOff: 'M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6' };
+export const ICONS = { command: 'M12 3v3M12 18v3M3 12h3M18 12h3M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8', week: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', roadmap: 'M5 21V4M5 4h11l-2 4l2 4H5', training: 'M3 12h4l3-8l4 16l3-8h4', body: 'M12 3a2 2 0 1 0 0 4a2 2 0 1 0 0-4M6 9.5h12M12 9.5V15M12 15l-3 6M12 15l3 6', recovery: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z', fuel: 'M4 3v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V3M7 3v18M20 15V3a4.5 4.5 0 0 0-4.5 4.5V13a2 2 0 0 0 2 2H20zm0 0v6', blood: 'M9 3h6M10 3v6l-5 10a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3', calendar: 'M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M8 13h3v3H8z', journal: 'M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6zM6 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2M9 8h6M9 12h6M9 16h3', settings: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4', more: 'M5 12h.01M12 12h.01M19 12h.01', soundOn: 'M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12', soundOff: 'M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6' };
 export class Component extends React.Component<any, any> {
   state = { muted: false, vw: typeof window !== 'undefined' ? window.innerWidth : 1280, moreOpen: false, typeIdx: -1, typeN: 0, brief: null, briefBusy: false, ask: null, chatFocus: null, voiceOut: false, listening: false, heard: '', speaking: null, chatOpen: false, chatMsgs: [], chatIn: '', chatBusy: false, boot: 'pending', fxN: 0, inj: [], injF: { area: 'Knee', side: 'Left', sev: 'Mild', date: '', note: '' }, pchk: {}, wchk: {}, diet: null, al: {}, prepT: '5k', up: 0, split: null, vOv: null, rMet: 'rec', fMet: 'w', tMet: 'endH', sport: 'run', page: null, range: null, hover: null, filledFront: false, filledBack: false, bDate: undefined, bCmp: undefined, bFilter: 'flagged', sDate: undefined, sCmp: undefined };
   _baseMount() {
@@ -305,7 +306,7 @@ export class Component extends React.Component<any, any> {
   chatScroll() { requestAnimationFrame(() => { const el = document.getElementById('im-chat-scroll'); if (el) el.scrollTop = el.scrollHeight; }); }
   layout(page, go, badges) {
     const w = this.state.vw, mob = w < 760, tab = !mob && w < 1100;
-    const TABS = ['command', 'week', 'training', 'recovery'], MORE = ['roadmap', 'body', 'fuel', 'blood', 'journal', 'settings'];
+    const TABS = ['command', 'week', 'training', 'recovery'], MORE = ['calendar', 'roadmap', 'body', 'fuel', 'blood', 'journal', 'settings'];
     const lbl = id => (PAGES.find(p => p.id === id) || {}).label || 'Settings';
     const inMore = MORE.includes(page);
     const tabs = TABS.map(id => ({ id: id, label: lbl(id), go: go[id], icon: ICONS[id], badge: (badges[id] || [''])[0] })).concat([{ id: 'more', label: 'More', go: () => this.setState(s => ({ moreOpen: !s.moreOpen })), icon: ICONS.more, badge: MORE.some(id => badges[id] && badges[id][1] === R) ? '•' : '' }])
@@ -348,7 +349,7 @@ export class Component extends React.Component<any, any> {
     const page = this.state.page ?? 'command', open = this.state.chatOpen, msgs = this.state.chatMsgs, busy = this.state.chatBusy;
     const lbl = P.label === 'Tests' ? 'Tests' : P.label, S = CHAT_SUGG[page] || CHAT_SUGG.command;
     const asked = new Set(msgs.filter(m => m.role === 'user').map(m => m.content));
-    const hello = { command: 'Want to talk through today\'s call?', week: 'Let\'s look at your week.', training: 'Let\'s dig into your training.', body: 'Let\'s look at your body data.', recovery: 'Let\'s look at your recovery.', fuel: 'Let\'s talk nutrition.', blood: 'Let\'s go through your test results.', journal: 'Let\'s go through your journal.', settings: 'Questions about your data sources?' }[page] || 'What would you like to know?';
+    const hello = { command: 'Want to talk through today\'s call?', week: 'Let\'s look at your week.', training: 'Let\'s dig into your training.', body: 'Let\'s look at your body data.', recovery: 'Let\'s look at your recovery.', fuel: 'Let\'s talk nutrition.', blood: 'Let\'s go through your test results.', journal: 'Let\'s go through your journal.', calendar: 'Let\'s look at what\'s coming up.', settings: 'Questions about your data sources?' }[page] || 'What would you like to know?';
     return {
       chatOrb: React.createElement(ChatOrb, { key: 'orb', size: 40, busy: false }),
       chatOrbSm: React.createElement(ChatOrb, { key: 'orbs', size: 34, busy: busy }),

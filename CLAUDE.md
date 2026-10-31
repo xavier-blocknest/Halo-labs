@@ -83,12 +83,12 @@ server/
   memory.ts         coach memory: notes (+ optional recall with OLLAMA_URL)
   sample.ts         sample-mode generator (separate process, throwaway database; never touches data/)
   update.ts         new-version check (git fetch origin main) and one-click update (merge); Settings → Updates
-  journal.ts weekPlan.ts backup.ts uploadTokens.ts
+  journal.ts calendar.ts (Calendar events + roadmap/protocol dates; PUT|DELETE /api/calendar/:id) weekPlan.ts backup.ts uploadTokens.ts
 src/
   app/              React components: App (auth gate, onboarding gate, data loading), LockScreen, Onboarding (first-run
                     wizard; state in /api/onboarding), DataPage (Settings), ApiKeys,
                     RecoveryKit, CoachPicker, CoachMemory, Uploader, RoadmapView, RoadmapPlanner (builds/edits the
-                    whole roadmap; /api/roadmap/doc), DeleteAll (Settings → Delete all data; POST /api/wipe), FuelView, JournalPage, WeekPlan, …
+                    whole roadmap; /api/roadmap/doc), DeleteAll (Settings → Delete all data; POST /api/wipe), FuelView, JournalPage, CalendarPage (+ UpcomingCard on Overview: next 14 days), WeekPlan, …
   legacy/           logic.tsx (shell: nav, layout, boot sequence, chat UI; plain JS, @ts-nocheck),
                     builders.tsx (every page's view model + voice + coach prompts), View.tsx (page layout, reads only v.*)
   coachPersona.ts   coach personalities (Coach, the athlete's own)

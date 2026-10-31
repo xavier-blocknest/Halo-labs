@@ -10,6 +10,7 @@ import { RecoveryWork } from '../app/RecoveryWork'
 import { LiftVolume } from '../app/LiftVolume'
 import { PersonalBests } from '../app/PersonalBests'
 import { JournalPage } from '../app/JournalPage'
+import { CalendarPage, UpcomingCard } from '../app/CalendarPage'
 import { WeekPlan } from '../app/WeekPlan'
 
 /** A WHOOP-style ring (Recovery, Sleep): sizes with its column, up to 184 px; text scales with it (cqw). */
@@ -521,6 +522,7 @@ export function View({ v }: { v: any }) {
               </section>
             </div>
             <div style={{"display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(min(100%,280px),1fr))", "gap": "16px", "alignItems": "stretch"}}>
+              <UpcomingCard items={v.D?.calendar ?? []} onOpen={v.go.calendar} />
               <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
                 <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
                   <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
@@ -1863,6 +1865,7 @@ export function View({ v }: { v: any }) {
         {" "}
         {v.show.fuel ? (<FuelView v={v} />) : null}
         {v.show.journal ? (<JournalPage D={v.D} />) : null}
+        {v.show.calendar ? (<CalendarPage D={v.D} />) : null}
         {" "}
         {v.show.settings ? (<>
           <div data-screen-label="settings">

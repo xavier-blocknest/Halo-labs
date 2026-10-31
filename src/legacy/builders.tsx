@@ -51,6 +51,8 @@ function chatProfile(D) {
     ? `${e.date} · "${e.title}" from ${e.doc.from}. TL;DR: ${e.doc.tldr.map(t => `${t.k} ${t.v}`).join(' ')} Full text: ${e.doc.blocks.filter(b => b.type !== 'sig').map(b => (b.lead ? b.lead + ' ' : '') + b.t).join(' ')}` + (e.note ? ` His notes: ${e.note}` : '')
     : `${e.date} · his entry "${e.title || 'Untitled'}": ${e.body}`).join('\n').slice(0, 16000)
   if (jr) lines.push(`Journal (his own entries and documents from his care team; cite them when relevant):\n${jr}`)
+  const cal = (D.calendar ?? []).filter(i => i.daysTo >= -7 && i.daysTo <= 120)
+  if (cal.length) lines.push(`Calendar (his appointments and events, plus dated roadmap milestones; today is ${D.today}):\n` + cal.map(i => `${i.date}${i.time ? ' ' + i.time : ''} · ${i.title} [${i.kind}]${i.location ? ` at ${i.location}` : ''}${i.note ? ` (${i.note})` : ''} · ${i.daysTo === 0 ? 'today' : i.daysTo > 0 ? `in ${i.daysTo} days` : `${-i.daysTo} days ago`}`).join('\n'))
   if (scan) lines.push(`DEXA ${scan.day}: ${scan.bodyFatPct}% body fat, lean ${scan.leanLb} lb, fat ${scan.fatLb} lb, VAT ${scan.vatLb} lb.`)
   const P = D.protocol
   if (P) {
@@ -787,6 +789,8 @@ function headline(id, D, extra) {
       return `${fl} marker${fl === 1 ? '' : 's'} out of range on the ${d.label} draw` + (d.status === 'PARTIAL' ? ' (some results still pending).' : '.') }
     case 'roadmap': { const p = D.plan; if (!p) return 'No roadmap yet.'; const nr = p.nextRace && p.nextRace.name !== p.goal.event ? ` ${p.nextRace.name} in ${p.nextRace.daysTo} days.` : ''
       return `${p.goal.daysTo} days to ${p.goal.event}.${nr}` }
+    case 'calendar': { const up = (D.calendar ?? []).filter(i => i.daysTo >= 0); if (!up.length) return 'Nothing coming up. Add an appointment or anything you want to count down to.'
+      const n = up.filter(i => i.daysTo <= 14).length, x = up[0]; return `${x.title} ${x.daysTo === 0 ? 'today' : x.daysTo === 1 ? 'tomorrow' : `in ${x.daysTo} days`}.` + (n > 1 ? ` ${n} things in the next 2 weeks.` : '') }
     case 'journal': { const j = D.journal ?? []; if (!j.length) return 'Write an entry, or paste what your doctor sent.'
       const docs = j.filter(e => e.doc).length; return `${j.length} entr${j.length === 1 ? 'y' : 'ies'}` + (docs ? `, ${docs} from your care team.` : '.') }
     case 'settings': { const n = Object.keys(D.lastData).length; return `${n} source${n === 1 ? '' : 's'} with data.` }
@@ -816,7 +820,7 @@ function renderVals() {
     h('div', { style: { position: 'absolute', left: 0, right: 0, top: 0, height: '12vh', background: 'linear-gradient(transparent, oklch(0.82 0.13 210 / 0.10) 80%, oklch(0.9 0.1 210 / 0.7) 99%, transparent)', animation: 'imScan .7s cubic-bezier(.3,.6,.3,1) forwards' } })) : null
   const go = Object.fromEntries(PAGES.map(p => [p.id, () => this.go(p.id)]))
   const draw = D.tests?.draws?.at(-1), flaggedN = draw ? D.tests.markers.filter(m => m.values[draw.id]?.f).length : 0
-  const t = D.training, badges = { blood: flaggedN ? [String(flaggedN), R] : ['', T3], week: t ? [t.weekCounts.now.activeDays + '/7', A] : ['', T3], roadmap: D.plan?.goal.weeksTo != null ? [D.plan.goal.weeksTo + 'w', A] : ['', T3] }
+  const t = D.training, badges = { blood: flaggedN ? [String(flaggedN), R] : ['', T3], week: t ? [t.weekCounts.now.activeDays + '/7', A] : ['', T3], roadmap: D.plan?.goal.weeksTo != null ? [D.plan.goal.weeksTo + 'w', A] : ['', T3], calendar: (D.calendar ?? []).filter(i => i.daysTo >= 0 && i.daysTo <= 14).length ? [String((D.calendar ?? []).filter(i => i.daysTo >= 0 && i.daysTo <= 14).length), A] : ['', T3] }
 
   // Muscle map
   const rangeMap = { '30D': 'd30', '90D': 'd90', 'All time': 'all' }, range = this.state.range ?? (this.props.defaultRange ?? '30D')

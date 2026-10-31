@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { loadKey } from './crypto.ts'
 import { openDb, upsertRecords, type RecordRow } from './db.ts'
-import type { DexaScan, LabDraw, LabResult, LiftSet, LiftWorkout, NutritionDay, NutritionTarget, StravaActivity, StravaGear, Vo2Test, WhoopBody, WhoopCycle, WhoopSleep, WhoopWorkout } from './model.ts'
+import type { CalendarEvent, DexaScan, LabDraw, LabResult, LiftSet, LiftWorkout, NutritionDay, NutritionTarget, StravaActivity, StravaGear, Vo2Test, WhoopBody, WhoopCycle, WhoopSleep, WhoopWorkout } from './model.ts'
 import { TZ, dayOf, isoSec } from './model.ts'
 
 console.log = (...a: unknown[]) => console.error(...a) // stdout carries only the JSON
@@ -293,6 +293,12 @@ put({ source: 'plan', kind: 'roadmap', id: today, day: today, data: {
   recovery_priorities: ['8 hours in bed', 'Sauna after hard days', 'One full rest day'],
   unknown_or_unconfirmed: [], other_events: {},
 } })
+
+// ---- Calendar ------------------------------------------------------------------------------------------------------
+
+const ev = (id: string, d: string, e: Omit<CalendarEvent, 'date' | 'updated'>) => put({ source: 'calendar', kind: 'event', id, day: d, data: { ...e, date: d, updated: `${today}T12:00:00.000Z` } satisfies CalendarEvent })
+ev('sample-doc', addDays(today, 5), { title: 'Sports medicine check-up (sample)', time: '09:30', kind: 'doctor', location: 'Sample Clinic', note: 'Bring recent lab results' })
+ev('sample-appt', addDays(today, 11), { title: 'Bike fitting (sample)', time: '16:00', kind: 'appointment', location: '', note: '' })
 
 upsertRecords(rows)
 
