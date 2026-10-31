@@ -13,6 +13,7 @@ export function ApiKeys() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; bad?: boolean } | null>(null)
   const [checks, setChecks] = useState<Record<string, Check | 'busy'>>({})
+  const [on, setOn] = useState<Record<string, boolean>>({}) // switched on or off here; otherwise on when anything is saved
 
   const load = useCallback(() => { fetch('/api/settings').then(r => r.json()).then(d => setRows(d.settings)).catch(() => {}) }, [])
   useEffect(load, [load])
@@ -24,6 +25,7 @@ export function ApiKeys() {
     if (r.ok) { setRows(d.settings); setDraft({}); setMsg({ text: 'Saved.' }); window.dispatchEvent(new Event('halolabs:data')) }
     else setMsg({ text: d.error ?? 'Couldn\'t save.', bad: true })
     setBusy(false)
+    return r.ok
   }
 
   async function test(kind: 'claude' | 'elevenlabs') {
@@ -35,6 +37,20 @@ export function ApiKeys() {
   if (!rows) return null
   const groups = [...new Set(rows.map(r => r.group))]
   const dirty = Object.keys(draft).length > 0
+  // Each service has an on/off switch; its fields only show while it's on. Profile isn't a service: always shown.
+  const isOn = (g: string) => g === 'Profile' || (on[g] ?? rows.some(r => r.group === g && r.set))
+  async function flip(g: string) {
+    const mine = rows!.filter(r => r.group === g)
+    if (!isOn(g)) { setOn(o => ({ ...o, [g]: true })); return }
+    if (mine.some(r => r.from === 'env')) { setMsg({ text: `${g} is set in the .env file. Remove it there to switch it off.`, bad: true }); return }
+    setDraft(d => Object.fromEntries(Object.entries(d).filter(([id]) => !mine.some(r => r.id === id))))
+    const saved = mine.filter(r => r.from === 'app')
+    if (saved.length) {
+      if (!confirm(`Switch off ${g}? This removes its saved keys, and the feature stops working until you add them again.`)) return
+      if (!await put(Object.fromEntries(saved.map(r => [r.id, ''])))) return
+    }
+    setOn(o => ({ ...o, [g]: false }))
+  }
   return (
     <section className="card">
       <header className="card-head">
@@ -46,8 +62,8 @@ export function ApiKeys() {
         }}>Run setup again</button>
       </header>
       <p className="hint" style={{ marginBottom: 12 }}>
-        Your own keys for the services Halo Labs talks to. They're stored encrypted in your database, never shown again after saving,
-        and only sent to the service they belong to. Leave a section empty to switch that feature off.
+        Switch on the services you use and add your own keys for them. They're stored encrypted in your database, never shown again
+        after saving, and only sent to the service they belong to.
       </p>
       {groups.map(g => {
         const kind = TESTS[g], check = kind ? checks[kind] : undefined
@@ -55,10 +71,16 @@ export function ApiKeys() {
           <div key={g} className="api-group">
             <div className="api-group-head">
               <span className="source-name">{g}</span>
-              {kind && <button className="btn" disabled={check === 'busy'} onClick={() => test(kind)}>{check === 'busy' ? 'Checking…' : 'Test'}</button>}
+              <span className="api-head-actions">
+                {kind && isOn(g) && <button className="btn" disabled={check === 'busy'} onClick={() => test(kind)}>{check === 'busy' ? 'Checking…' : 'Test'}</button>}
+                {g !== 'Profile' && (
+                  <button type="button" role="switch" aria-checked={isOn(g)} aria-label={`${g}: ${isOn(g) ? 'on' : 'off'}`} disabled={busy}
+                    className={`api-switch${isOn(g) ? ' on' : ''}`} onClick={() => void flip(g)}><span /></button>
+                )}
+              </span>
             </div>
-            {check && check !== 'busy' && <p className={`hint ${check.ok ? 'good' : 'alert'}`}>{check.detail}</p>}
-            {rows.filter(r => r.group === g).map(r => (
+            {isOn(g) && check && check !== 'busy' && <p className={`hint ${check.ok ? 'good' : 'alert'}`}>{check.detail}</p>}
+            {isOn(g) && rows.filter(r => r.group === g).map(r => (
               <label key={r.id} className="api-row">
                 <span className="api-label">{r.label}</span>
                 <span className="api-field">

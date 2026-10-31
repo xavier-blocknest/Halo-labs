@@ -128,6 +128,14 @@
 /* Settings → APIs */
 .dp .api-group { padding: 14px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
 .dp .api-group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dp .api-head-actions { display: flex; align-items: center; gap: 10px; }
+.dp .api-switch { position: relative; width: 40px; height: 24px; flex: none; padding: 0; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: oklch(1 0 0 / 0.08); transition: background .2s, border-color .2s; }
+.dp .api-switch span { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: oklch(0.74 0.015 255); transition: transform .2s, background .2s; }
+.dp .api-switch.on { background: oklch(0.82 0.13 210 / 0.35); border-color: oklch(0.82 0.13 210 / 0.7); }
+.dp .api-switch.on span { transform: translateX(16px); background: oklch(0.82 0.13 210); }
+.dp .api-switch:disabled { opacity: 0.6; cursor: default; }
+.dp .api-switch:focus-visible { outline: 2px solid oklch(0.82 0.13 210); outline-offset: 2px; }
 .dp .api-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 4px 12px; align-items: center; }
 .dp .api-label { font-size: 12.5px; color: var(--t2); }
 .dp .api-field { display: flex; gap: 8px; min-width: 0; }
