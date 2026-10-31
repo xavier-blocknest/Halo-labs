@@ -25,6 +25,7 @@ import { UPDATE_PRIORITIES_TOOL, updatePriorities } from './priorities.ts'
 import { importUpload, initImports, scanInbox, startInboxWatcher } from './import/index.ts'
 import { authorizeUrl, disconnect, handleCallback, isConfigured, isConnected, onLocalhost, publicUrl, redirectUri, type Provider } from './oauth.ts'
 import { isSyncing, startScheduler, syncIfStale, syncNow } from './sync.ts'
+import { calendarChanged, morningCall, notify, pushStatus, setPrefs, startPushScheduler, subscribe, unsubscribe } from './push.ts'
 import { listSettings, onSettingsChange, saveSettings, setting } from './settings.ts'
 import { applyUpdate, AUTO_KEY, checkForUpdate, setAutoChecks, startUpdateChecks, updateStatus } from './update.ts'
 import { TZ } from './model.ts'
@@ -68,7 +69,7 @@ const NO_KEY = 'Coach is offline: add your Claude API key in Settings → APIs.'
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
-  '.mp3': 'audio/mpeg', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json',
+  '.mp3': 'audio/mpeg', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
 }
 
 function send(res: ServerResponse, status: number, body: unknown) {
@@ -392,14 +393,16 @@ async function saveRoadmapDoc(req: IncomingMessage, res: ServerResponse) {
 /** POST /api/wipe {confirm: 'DELETE', keys?, passkeys?}: Settings → Delete all data. Removes every record (workouts, recovery, labs,
  *  food, journal, roadmap, week plans, coach memory and chat), saved state, WHOOP/Strava connections, the import log,
  *  archived uploads and anything waiting in the inbox, and reopens the setup guide. Keeps what lets him back in and
- *  saves retyping: passkeys and sessions, API keys and settings, upload links, the idle lock, and the database key.
+ *  saves retyping: passkeys and sessions, API keys and settings, upload links, notification devices and switches, the
+ *  idle lock, and the database key. Notification devices go with `passkeys`, their switches with `keys`.
  *  `keys` also clears every API key and setting (and the name); `passkeys` also removes every passkey, session and
  *  upload link and returns a new setup code. Off-site backups (and the database key) are never touched. */
 async function wipeAll(req: IncomingMessage, res: ServerResponse) {
   const { confirm, keys, passkeys } = JSON.parse(await readBody(req) || '{}') as { confirm?: string; keys?: boolean; passkeys?: boolean }
   if (confirm !== 'DELETE') throw new AuthError('Type DELETE to confirm.')
   if (isSyncing('whoop') || isSyncing('strava')) throw new AuthError('A sync is running. Try again in a minute.')
-  wipeData(['settings', 'auth:idleMinutes', 'recovery:downloaded', ...(passkeys === true ? [] : ['upload-tokens']), ...(keys === true ? [] : [SOURCES_KEY, AUTO_KEY])])
+  wipeData(['settings', 'auth:idleMinutes', 'recovery:downloaded', 'push-vapid', ...(passkeys === true ? [] : ['upload-tokens', 'push-devices']), ...(keys === true ? [] : [SOURCES_KEY, AUTO_KEY, 'push-prefs'])])
+  calendarChanged()
   if (keys === true) saveSettings(Object.fromEntries(listSettings().map(r => [r.id, '']))) // through settings.ts, so its listeners hear it
   forgetHistory() // resets the coach memory's in-process cache
   for (const dir of [join(ROOT, 'data', 'imports'), join(ROOT, 'inbox')])
@@ -423,6 +426,25 @@ async function hookImport(req: IncomingMessage, res: ServerResponse) {
   const line = (r: (typeof results)[number]) => r.status === 'imported' ? `Imported: ${r.importer} (${r.records} records).`
     : r.status === 'duplicate' ? 'Already imported, nothing new.' : r.status === 'unrecognized' ? 'Halo Labs doesn\'t recognize this file.' : `Import failed: ${r.detail ?? 'unknown error'}`
   text(results.some(r => r.status === 'failed') ? 500 : 200, results.map(line).join('\n'))
+}
+
+// Notifications (server/push.ts). Behind the session check like every other /api route.
+async function pushRoutes(req: IncomingMessage, res: ServerResponse, url: URL) {
+  const json = async () => JSON.parse((await readBody(req)) || '{}')
+  try {
+    if (url.pathname === '/api/push' && req.method === 'GET') return send(res, 200, pushStatus())
+    if (url.pathname === '/api/push/subscribe' && req.method === 'POST') { const b = await json(); return send(res, 200, { id: subscribe(b.subscription, String(b.label ?? '')) }) }
+    if (url.pathname === '/api/push/prefs' && req.method === 'PUT') return send(res, 200, { prefs: setPrefs(await json()) })
+    if (url.pathname === '/api/push/test' && req.method === 'POST') {
+      // A test shows what this morning's call would say, when there is one; otherwise a plain test message.
+      const b = await json(), c = morningCall()
+      const r = await notify(c ? { title: c.title, body: c.body, tag: 'test' } : { title: 'Notifications are working', body: 'Test message.', tag: 'test' }, b.id || undefined)
+      return send(res, r.sent ? 200 : 502, r.sent ? r : { ...r, error: r.failed[0] ?? 'No devices' })
+    }
+    const m = /^\/api\/push\/devices\/([^/]+)$/.exec(url.pathname)
+    if (m && req.method === 'DELETE') return send(res, 200, { ok: unsubscribe(decodeURIComponent(m[1])) })
+  } catch (e) { return send(res, 400, { error: (e as Error).message }) }
+  return send(res, 404, { error: 'not found' })
 }
 
 /** Coach memory for Settings: notes (list/add/edit/delete) and the conversation history (stats/forget). */
@@ -604,6 +626,7 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
       const s = await runBackup(ROOT, 'manual').catch(e => ({ ok: false, error: (e as Error).message }))
       return send(res, s.ok ? 200 : 502, s)
     }
+    if (url.pathname.startsWith('/api/push')) return await pushRoutes(req, res, url)
     if (url.pathname.startsWith('/api/memory')) return await memoryRoutes(req, res, url)
     if (url.pathname === '/api/upload-tokens') {
       if (req.method === 'POST') return send(res, 200, createUploadToken(String((JSON.parse((await readBody(req)) || '{}') as { label?: string }).label ?? '')))
@@ -646,8 +669,8 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     if (cm) {
       if (!EVENT_ID.test(cm[1])) return send(res, 400, { error: 'Bad event id.' })
       try {
-        if (req.method === 'PUT') return send(res, 200, { event: saveEvent(cm[1], JSON.parse(await readBody(req))) })
-        if (req.method === 'DELETE') { deleteEvent(cm[1]); return send(res, 200, { ok: true }) }
+        if (req.method === 'PUT') { const event = saveEvent(cm[1], JSON.parse(await readBody(req))); calendarChanged(); return send(res, 200, { event }) }
+        if (req.method === 'DELETE') { deleteEvent(cm[1]); calendarChanged(); return send(res, 200, { ok: true }) }
       } catch (e) { return send(res, 400, { error: (e as Error).message }) }
     }
     const sw = /^\/api\/swims\/([^/]+)$/.exec(url.pathname)
@@ -698,6 +721,7 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
   buildCoach()
   console.log(`Halo Labs on http://${HOST}:${PORT} (coach ${coach ? 'on' : 'off: add a Claude API key in Settings → APIs'})`)
   startScheduler()
+  startPushScheduler()
   startBackups(ROOT)
   startUpdateChecks(ROOT)
   seedFromChat().then(backfillEmbeddings).catch(e => console.error('memory: startup failed:', e))

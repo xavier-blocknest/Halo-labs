@@ -92,6 +92,14 @@ The Mac address (`localhost`) only works on the Mac. For the iPhone (and the upl
 
 It's private to your Tailscale account: nobody else can reach it. The Mac has to be awake for the phone to reach it.
 
+**Notifications** (Settings → Notifications): today's Hard / Easy / Rest call once WHOOP has your morning recovery,
+calendar reminders (48 hours, 24 hours and 30 minutes before; all-day items at 8 AM two days and one day before), and
+a heads-up when WHOOP or Strava keeps failing to sync. Each has an on/off switch. On the iPhone, open the Tailscale
+address in Safari, tap Share → **Add to Home Screen**, open Halo Labs from that icon, then **Turn on for this
+device** in Settings → Notifications. On the Mac, the same button works in the browser. Notifications are sent by the
+Mac, so they only arrive while it's awake and Halo Labs is running. They're end-to-end encrypted: Apple's push
+service relays them but can't read them.
+
 ## 5. Everyday commands
 
 ```

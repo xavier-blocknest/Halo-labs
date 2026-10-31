@@ -6,6 +6,7 @@ import { Backups } from './Backups'
 import { CoachMemory } from './CoachMemory'
 import { CoachPicker } from './CoachPicker'
 import { FoldCard } from './Fold'
+import { Notifications } from './Notifications'
 import { Passkeys } from './Passkeys'
 import { RecoveryKit } from './RecoveryKit'
 import { UploadTokens } from './UploadTokens'
@@ -113,6 +114,7 @@ export function DataPage({ embedded = false }: { embedded?: boolean }) {
       <RecoveryKit />
       <CoachPicker />
       <CoachMemory />
+      <Notifications />
       <Backups />
       <Passkeys />
       <UploadTokens />
