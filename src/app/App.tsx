@@ -13,6 +13,7 @@ const REFRESH_MS = 5 * 60_000
 // fetched in the background as soon as the app starts, so it is usually ready by the time you unlock.
 const loadDashboard = () => import('../legacy/builders').then(() => import('../legacy/logic')).then(m => ({ default: m.Dashboard }))
 const Dashboard = lazy(loadDashboard)
+const Onboarding = lazy(() => import('./Onboarding').then(m => ({ default: m.Onboarding })))
 const PING_EVERY_MS = 60_000
 
 // A phone can keep the app open for days on an old build. When it comes back to the foreground, compare the entry
@@ -29,6 +30,7 @@ export function App() {
   const [auth, setAuth] = useState<Auth | null>(null)
   const [D, setD] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [onboarded, setOnboarded] = useState<boolean | null>(null)
   const lastActive = useRef(Date.now())
   const lastPing = useRef(0)
 
@@ -69,6 +71,12 @@ export function App() {
       .catch(() => {})
   }, [load])
 
+  // First run: the onboarding wizard until it's finished or skipped (saved server-side, so once per install).
+  useEffect(() => {
+    if (!auth?.authenticated) { setOnboarded(null); return }
+    fetch('/api/onboarding').then(r => (r.ok ? r.json() : { done: true })).then(o => setOnboarded(!!o.done)).catch(() => setOnboarded(true))
+  }, [auth?.authenticated])
+
   useEffect(() => {
     if (!auth?.authenticated) return
     const idleMs = auth.idleMinutes * 60_000
@@ -97,6 +105,8 @@ export function App() {
 
   if (!auth) return <div className="boot-wait">{error ? `Couldn't reach Halo Labs: ${error}` : ''}</div>
   if (!auth.authenticated) return <LockScreen setup={auth.setup} onUnlocked={checkAuth} />
+  if (onboarded === null) return <div className="boot-wait" />
+  if (!onboarded) return <Suspense fallback={<div className="boot-wait" />}><Onboarding onDone={() => { setOnboarded(true); load() }} /></Suspense>
   if (!D) return <div className="boot-wait">{error ? `Couldn't load your data: ${error}` : ''}</div>
   return <Suspense fallback={<div className="boot-wait" />}><Dashboard D={D} onLock={lock} /></Suspense>
 }

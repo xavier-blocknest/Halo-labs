@@ -27,13 +27,17 @@ cd ~/halolabs
 This writes your settings file, builds and starts Halo Labs, opens it in your browser, and prints a **setup code**.
 
 1. On the lock screen, enter the setup code and create a **passkey** (Touch ID; it's saved in iCloud Keychain).
-2. Go to **Settings → APIs** and add your keys (next section). Press **Test** next to Claude and ElevenLabs.
-3. **Settings → Recovery kit → Download.** Put the file in your password manager and delete it from Downloads.
-   Without this key nobody (not even you) can read your data if the `.env` file is lost.
+2. A **setup guide** walks you through the rest: your name, where your data lives, the recovery key, which services
+   to switch on (AI coach, WHOOP, Strava, voice) with step-by-step instructions for each key, your Quest lab PDFs,
+   and anything else you track (DEXA, VO₂ max, MacroFactor, FitnessAI, Runna, a race plan).
+3. **Download the recovery kit** when the guide offers it. Put the file in your password manager and delete it
+   from Downloads. Without this key nobody (not even you) can read your data if the `.env` file is lost.
+
+Skipped something? Everything is in **Settings** later, and Settings → APIs → **Run setup again** reopens the guide.
 
 Open it any time at **http://localhost:8787** (or `./halo open`).
 
-## 2. Your API keys (Settings → APIs)
+## 2. Your API keys (the setup guide, or Settings → APIs)
 
 | Service | What for | Where to get it | Cost |
 |---|---|---|---|

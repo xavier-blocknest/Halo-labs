@@ -37,7 +37,14 @@ export function ApiKeys() {
   const dirty = Object.keys(draft).length > 0
   return (
     <section className="card">
-      <header className="card-head"><h2>APIs</h2></header>
+      <header className="card-head">
+        <h2>APIs</h2>
+        <button className="btn" onClick={async () => {
+          if (!confirm('Open the setup guide again? Nothing you\'ve saved is removed.')) return
+          await fetch('/api/onboarding', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: false }) })
+          location.reload()
+        }}>Run setup again</button>
+      </header>
       <p className="hint" style={{ marginBottom: 12 }}>
         Your own keys for the services Halo Labs talks to. They're stored encrypted in your database, never shown again after saving,
         and only sent to the service they belong to. Leave a section empty to switch that feature off.

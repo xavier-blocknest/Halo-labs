@@ -226,10 +226,22 @@ async function tts(req: IncomingMessage, res: ServerResponse) {
 
 /** Settings → APIs: list (no secret values), save, and a quick check that a key works. */
 async function settingsRoutes(req: IncomingMessage, res: ServerResponse, url: URL) {
-  if (req.method === 'GET') return send(res, 200, { settings: listSettings() })
-  if (req.method === 'PUT') {
+  if (url.pathname === '/api/settings' && req.method === 'GET') return send(res, 200, { settings: listSettings() })
+  if (url.pathname === '/api/settings' && req.method === 'PUT') {
     try { saveSettings(JSON.parse(await readBody(req)) as Record<string, unknown>) } catch (e) { throw new AuthError((e as Error).message) }
     return send(res, 200, { settings: listSettings() })
+  }
+  if (url.pathname === '/api/settings/voices' && req.method === 'GET') {
+    // The ElevenLabs voices this key can use, with ElevenLabs' public sample clips, for the voice picker.
+    const key = setting('ELEVENLABS_API_KEY')
+    if (!key) return send(res, 200, { voices: [], error: 'Save an ElevenLabs API key first.' })
+    try {
+      const r = await fetch(`${ELEVEN_URL}/v1/voices`, { headers: { 'xi-api-key': key }, signal: AbortSignal.timeout(15_000) })
+      if (!r.ok) return send(res, 200, { voices: [], error: r.status === 401 ? 'ElevenLabs rejected the key (it needs Voices read access).' : `ElevenLabs error ${r.status}` })
+      const j = await r.json() as { voices?: { voice_id: string; name: string; category?: string; preview_url?: string; labels?: Record<string, string> }[] }
+      return send(res, 200, { voices: (j.voices ?? []).map(v => ({ id: v.voice_id, name: v.name, category: v.category ?? '', preview: v.preview_url ?? null,
+        about: [v.labels?.gender, v.labels?.accent, v.labels?.description ?? v.labels?.descriptive].filter(Boolean).join(' · ') })) })
+    } catch { return send(res, 200, { voices: [], error: 'ElevenLabs didn\'t answer.' }) }
   }
   const t = /^\/api\/settings\/test\/(claude|elevenlabs)$/.exec(url.pathname)
   if (t && req.method === 'POST') {
@@ -451,6 +463,17 @@ createServer(async (req, res) => {
     if (url.pathname === '/api/tts' && req.method === 'POST') return await tts(req, res)
     if (url.pathname === '/api/voice') return send(res, 200, { ready: !!setting('ELEVENLABS_API_KEY'), tts: ttsReady() })
     if (url.pathname.startsWith('/api/settings')) return await settingsRoutes(req, res, url)
+    if (url.pathname === '/api/onboarding') {
+      // First-run setup (src/app/Onboarding.tsx): done flag plus the answers (services picked, data he has), encrypted.
+      if (req.method === 'GET') return send(res, 200, getSecret('onboarding') ?? { done: false })
+      if (req.method === 'PUT') {
+        const b = JSON.parse(await readBody(req)) as { done?: boolean; services?: unknown; have?: unknown }
+        const list = (x: unknown) => (Array.isArray(x) ? x.filter(v => typeof v === 'string' && v.length < 40).slice(0, 20) : [])
+        const o = { done: b.done === true, at: new Date().toISOString(), services: list(b.services), have: list(b.have) }
+        setSecret('onboarding', o)
+        return send(res, 200, o)
+      }
+    }
     if (url.pathname === '/api/recovery-kit/status') return send(res, 200, { downloaded: getSecret<string>('recovery:downloaded') })
     if (url.pathname === '/api/recovery-kit' && req.method === 'GET') {
       const at = new Date().toISOString()

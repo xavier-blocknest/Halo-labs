@@ -2,7 +2,7 @@ import { useRef, useState, type DragEvent } from 'react'
 import { FoldCard } from './Fold'
 import { uploadFile, type ImportResult } from './api'
 
-const ACCEPT = '.csv,.json,.xlsx,.pdf,.zip,.png,.jpg,.jpeg' // images: FitnessAI workout screenshots
+const ACCEPT = '.csv,.json,.xlsx,.pdf,.zip,.md,.txt'
 const MAX_BYTES = 200_000_000
 
 type Item = { id: number; name: string; size: number; progress: number; state: 'queued' | 'uploading' | 'done' | 'error'; results?: ImportResult[]; error?: string }

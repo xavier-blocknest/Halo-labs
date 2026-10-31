@@ -75,7 +75,8 @@ server/
   memory.ts         coach memory: notes (+ optional recall with OLLAMA_URL)
   journal.ts weekPlan.ts backup.ts uploadTokens.ts
 src/
-  app/              React components: App (auth gate, data loading), LockScreen, DataPage (Settings), ApiKeys,
+  app/              React components: App (auth gate, onboarding gate, data loading), LockScreen, Onboarding (first-run
+                    wizard; state in /api/onboarding), DataPage (Settings), ApiKeys,
                     RecoveryKit, CoachPicker, CoachMemory, Uploader, RoadmapView, FuelView, JournalPage, WeekPlan, …
   legacy/           logic.tsx (shell: nav, layout, boot sequence, chat UI; plain JS, @ts-nocheck),
                     builders.tsx (every page's view model + voice + coach prompts), View.tsx (page layout, reads only v.*)
