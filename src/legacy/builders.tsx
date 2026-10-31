@@ -47,9 +47,11 @@ function chatProfile(D) {
   if (lv) { const f = (k, l) => { const x = lv.periods[k]; return `${l} ${x.lb.toLocaleString()} lb, ${x.sets} sets, ${x.reps} reps, ${x.n} sessions` + (x.prev ? ` (prior period ${x.prev.lb.toLocaleString()} lb, ${x.prev.sets} sets)` : '') }
     lines.push(`Lifting volume (weight lifted = reps × weight, FitnessAI + screenshots): ${f('week', 'this week so far')}; ${f('d30', 'last 30 days')}; ${f('year', 'this year')}. Most weight moved in 30 days: ${lv.periods.d30.top.map(t => `${t.name} ${t.lb.toLocaleString()} lb`).join(', ')}.`) }
   // Journal (owner's choice: the coach may read it). Newest first, capped so the prompt stays small.
-  const jr = (D.journal ?? []).slice(0, 12).map(e => e.doc
+  // Workouts he linked to an entry: the entry is about that session (how it felt, pain, conditions, …).
+  const linked = e => (e.workouts ?? []).length ? ` [Linked workout${e.workouts.length > 1 ? 's' : ''}: ${e.workouts.map(w => w.missing ? `a ${w.sport} on ${w.day} (no longer in the data)` : `${w.name} (${w.sport}, ${w.day} ${w.time}${w.mi != null ? `, ${w.mi} mi` : w.yd != null ? `, ${w.yd} yd` : ''}${w.min ? `, ${w.min} min` : ''}${w.strain != null ? `, strain ${w.strain}` : ''}${w.avgHr ? `, avg HR ${w.avgHr}` : ''})`).join('; ')}]` : ''
+  const jr = (D.journal ?? []).slice(0, 12).map(e => (e.doc
     ? `${e.date} · "${e.title}" from ${e.doc.from}. TL;DR: ${e.doc.tldr.map(t => `${t.k} ${t.v}`).join(' ')} Full text: ${e.doc.blocks.filter(b => b.type !== 'sig').map(b => (b.lead ? b.lead + ' ' : '') + b.t).join(' ')}` + (e.note ? ` His notes: ${e.note}` : '')
-    : `${e.date} · his entry "${e.title || 'Untitled'}": ${e.body}`).join('\n').slice(0, 16000)
+    : `${e.date} · his entry "${e.title || 'Untitled'}": ${e.body}`) + linked(e)).join('\n').slice(0, 16000)
   if (jr) lines.push(`Journal (his own entries and documents from his care team; cite them when relevant):\n${jr}`)
   const cal = (D.calendar ?? []).filter(i => i.daysTo >= -7 && i.daysTo <= 120)
   if (cal.length) lines.push(`Calendar (his appointments and events, plus dated roadmap milestones; today is ${D.today}):\n` + cal.map(i => `${i.date}${i.time ? ' ' + i.time : ''} · ${i.title} [${i.kind}]${i.location ? ` at ${i.location}` : ''}${i.note ? ` (${i.note})` : ''} · ${i.daysTo === 0 ? 'today' : i.daysTo > 0 ? `in ${i.daysTo} days` : `${-i.daysTo} days ago`}`).join('\n'))

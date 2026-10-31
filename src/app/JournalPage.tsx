@@ -17,13 +17,21 @@ const CSS = `
 `
 
 type Block = { type: 'h' | 'p' | 'sig'; t: string; lead?: string }
+type Workout = {
+  id: string; day: string; start: string; sport: string; name?: string; time?: string; min?: number
+  mi?: number | null; yd?: number | null; strain?: number | null; avgHr?: number | null; missing?: true
+}
 type Entry = {
   id: string; date: string; time?: string | null; title: string; body: string; note?: string; updated: string
+  workouts?: Workout[]
   doc?: { from: string; tags: string[]; tldr: { k: string; v: string }[]; blocks: Block[] } | null
 }
 
 const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', ...o })
 const newId = () => 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+const SPORT: Record<string, string> = { run: 'Run', ride: 'Ride', swim: 'Swim', walk: 'Walk', strength: 'Lift', other: 'Workout' }
+const workoutLine = (w: Workout) => w.missing ? 'No longer in your data'
+  : [w.time, w.mi != null ? `${w.mi} mi` : w.yd != null ? `${w.yd.toLocaleString()} yd` : null, w.min ? `${w.min} min` : null, w.strain != null ? `strain ${w.strain}` : null, w.avgHr ? `${w.avgHr} bpm avg` : null].filter(Boolean).join(' · ')
 const preview = (e: Entry) => (e.doc ? (e.doc.blocks.find(b => b.type === 'p' && b.t.length > 120) ?? e.doc.blocks.find(b => b.type === 'p'))?.t ?? '' : e.body) || 'No text yet'
 
 async function api(path: string, method: string, body?: unknown) {
@@ -41,6 +49,7 @@ export function JournalPage({ D }: { D: any }) {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<'' | 'saving' | 'saved' | 'formatting'>('')
   const [err, setErr] = useState<string | null>(null)
+  const [picker, setPicker] = useState<{ for: string; list: Workout[] | null } | null>(null)
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   const pending = useRef(new Map<string, Partial<Entry>>())
   const refresh = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -75,8 +84,21 @@ export function JournalPage({ D }: { D: any }) {
     catch (x) { setErr((x as Error).message); setStatus('') }
   }
 
+  // Linking saves right away (not debounced): the server checks each workout and returns the entry with them resolved.
+  const setWorkouts = async (id: string, ids: string[]) => {
+    await flush(id); setErr(null)
+    try { const { entry } = await api(`/api/journal/${id}`, 'PUT', { workouts: ids }); setEntries(list => list.map(e => (e.id === id ? { ...e, workouts: entry.workouts } : e))); setStatus('saved'); touch() }
+    catch (x) { setErr((x as Error).message) }
+  }
+  const openPicker = async (e: Entry) => {
+    if (picker?.for === e.id) return setPicker(null)
+    setPicker({ for: e.id, list: null })
+    try { const { workouts } = await api(`/api/journal/workouts?day=${e.date}`, 'GET'); setPicker(p => (p?.for === e.id ? { for: e.id, list: workouts } : p)) }
+    catch (x) { setErr((x as Error).message); setPicker(null) }
+  }
+
   const list = useMemo(() => {
-    const s = q.trim().toLowerCase(), textOf = (e: Entry) => (e.doc ? e.doc.blocks.map(b => b.t).join(' ') + ' ' + e.doc.from : e.body)
+    const s = q.trim().toLowerCase(), textOf = (e: Entry) => (e.doc ? e.doc.blocks.map(b => b.t).join(' ') + ' ' + e.doc.from : e.body) + ' ' + (e.workouts ?? []).map(w => w.name ?? '').join(' ')
     return [...entries].sort((a, b) => (b.date + (b.time ?? '')).localeCompare(a.date + (a.time ?? '')))
       .filter(e => !s || `${e.title} ${textOf(e)} ${e.note ?? ''}`.toLowerCase().includes(s))
   }, [entries, q])
@@ -113,7 +135,7 @@ export function JournalPage({ D }: { D: any }) {
                       <span style={{ flex: 'none', fontSize: '11.5px', color: T3 }}>{fmt(e.date, { month: 'short', day: 'numeric' })}</span>
                     </div>
                     <span style={{ fontSize: '12.5px', lineHeight: 1.45, color: 'oklch(0.66 0.015 255)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{preview(e)}</span>
-                    <span style={{ fontSize: '11px', color: e.doc ? A : T3 }}>{e.doc ? e.doc.from : 'You'}</span>
+                    <span style={{ fontSize: '11px', color: e.doc ? A : T3 }}>{e.doc ? e.doc.from : 'You'}{e.workouts?.length ? <span style={{ color: T3 }}> · {e.workouts.length === 1 ? e.workouts[0].name ?? '1 workout' : `${e.workouts.length} workouts`}</span> : null}</span>
                   </button>
                 )
               })}
@@ -136,6 +158,39 @@ export function JournalPage({ D }: { D: any }) {
               </div>
             </div>
             {err ? <span style={{ fontSize: '12.5px', color: 'oklch(0.7 0.18 25)' }}>{err}</span> : null}
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+              {(cur.workouts ?? []).map(w => (
+                <span key={w.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', maxWidth: '100%', padding: '6px 6px 6px 11px', borderRadius: '10px', background: 'oklch(0.82 0.13 210 / 0.07)', border: '1px solid oklch(0.82 0.13 210 / 0.22)', fontSize: '12.5px' }}>
+                  <span style={{ color: A, fontWeight: 500 }}>{SPORT[w.sport] ?? 'Workout'}</span>
+                  <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ color: w.missing ? T3 : T1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{w.name ?? fmt(w.day, { month: 'short', day: 'numeric' })}{w.day !== cur.date && !w.missing ? <span style={{ color: T3 }}> · {fmt(w.day, { month: 'short', day: 'numeric' })}</span> : null}</span>
+                    <span style={{ color: T3, fontSize: '11.5px' }}>{workoutLine(w)}</span>
+                  </span>
+                  <button className="jr-btn" aria-label="Unlink workout" title="Unlink" onClick={() => setWorkouts(cur.id, (cur.workouts ?? []).filter(x => x.id !== w.id).map(x => x.id))} style={{ ...btn, border: 0, padding: '2px 7px', fontSize: '15px', lineHeight: 1 }}>×</button>
+                </span>
+              ))}
+              <button className="jr-btn" onClick={() => openPicker(cur)} style={{ ...btn, color: A, borderColor: 'oklch(0.82 0.13 210 / 0.3)' }}>{picker?.for === cur.id ? 'Done' : cur.workouts?.length ? '+ Link another workout' : '+ Link workout'}</button>
+            </div>
+            {picker?.for === cur.id ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '8px', borderRadius: '12px', border: '1px solid oklch(1 0 0 / 0.08)', background: 'oklch(0.17 0.017 262)', maxHeight: '320px', overflowY: 'auto' }}>
+                {picker.list === null ? <span style={{ fontSize: '12.5px', color: T3, padding: '8px' }}>Loading workouts…</span>
+                  : !picker.list.length ? <span style={{ fontSize: '12.5px', color: T3, padding: '8px' }}>No workouts in the week around {fmt(cur.date, { month: 'short', day: 'numeric' })}.</span>
+                  : picker.list.map(w => {
+                    const ids = (cur.workouts ?? []).map(x => x.id), on = ids.includes(w.id)
+                    return (
+                      <button key={w.id} className="jr-item" onClick={() => setWorkouts(cur.id, on ? ids.filter(x => x !== w.id) : [...ids, w.id])} style={{ cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', display: 'flex', gap: '10px', alignItems: 'center', padding: '9px 10px', borderRadius: '9px', border: 0, background: on ? 'oklch(0.82 0.13 210 / 0.1)' : 'transparent' }}>
+                        <span style={{ flex: 'none', width: '16px', color: A }}>{on ? '✓' : ''}</span>
+                        <span style={{ flex: 'none', width: '84px', whiteSpace: 'nowrap', fontSize: '11.5px', color: w.day === cur.date ? T1 : T3 }}>{fmt(w.day, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                        <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '13px', color: T1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: A }}>{SPORT[w.sport] ?? 'Workout'}</span> · {w.name}</span>
+                          <span style={{ fontSize: '11.5px', color: T3 }}>{workoutLine(w)}</span>
+                        </span>
+                      </button>
+                    )
+                  })}
+              </div>
+            ) : null}
 
             {!cur.doc ? (
               <>

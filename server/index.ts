@@ -18,7 +18,7 @@ import { dashboard } from './dashboard/index.ts'
 import { buildSessions, SOURCE_CHOICES, SOURCE_SPORTS, SOURCES_KEY, sourcePrefs, type SourcePrefs } from './dashboard/sessions.ts'
 import { parseWhen, roadmapDoc, roadmapEdits, SCHEDULE_DAYS, STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
 import { today } from './dashboard/time.ts'
-import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry } from './journal.ts'
+import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry, workoutsAround } from './journal.ts'
 import { deleteEvent, EVENT_ID, saveEvent } from './calendar.ts'
 import { SAVE_WEEK_PLAN_TOOL, saveWeekPlan } from './weekPlan.ts'
 import { importUpload, initImports, scanInbox, startInboxWatcher } from './import/index.ts'
@@ -636,6 +636,9 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
       } catch (e) { return send(res, 400, { error: (e as Error).message }) }
     }
     if (url.pathname === '/api/journal' && req.method === 'GET') return send(res, 200, { entries: journalEntries() })
+    if (url.pathname === '/api/journal/workouts' && req.method === 'GET') {
+      try { return send(res, 200, { workouts: workoutsAround(url.searchParams.get('day') ?? '') }) } catch (e) { return send(res, 400, { error: (e as Error).message }) }
+    }
     const jm = /^\/api\/journal\/([^/]+)(\/format)?$/.exec(url.pathname)
     if (jm) {
       const id = jm[1]

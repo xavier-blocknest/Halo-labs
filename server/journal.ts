@@ -4,22 +4,85 @@
 // formatted letter never says something the original didn't. Only that entry's text leaves the machine.
 import type Anthropic from '@anthropic-ai/sdk'
 import { deleteRecord, readRecords, upsertRecords } from './db.ts'
-import type { JournalBlock, JournalEntry } from './model.ts'
+import { buildSessions, type Session } from './dashboard/sessions.ts'
+import { addDays, localTime } from './dashboard/time.ts'
+import type { JournalBlock, JournalEntry, WorkoutLink } from './model.ts'
 
 export const JOURNAL_ID = /^[a-z0-9-]{4,40}$/
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 const MAX_TEXT = 60_000
 
-export function journalEntries() {
+const MI = 1609.344, YD = 0.9144
+const MAX_LINKS = 8
+
+/** What the page and the coach see for a linked workout (all from the session; nothing made up). */
+function workoutSummary(s: Session) {
+  return {
+    id: s.id, day: s.day, start: s.start, sport: s.sport, name: s.name, time: localTime(s.start),
+    min: Math.round((s.movingS ?? s.elapsedS ?? 0) / 60),
+    mi: s.distanceM && ['run', 'ride', 'walk'].includes(s.sport) ? Math.round((s.distanceM / MI) * 10) / 10 : null,
+    yd: s.sport === 'swim' && s.distanceM ? Math.round(s.distanceM / YD) : null,
+    strain: s.strain, avgHr: s.avgHr ? Math.round(s.avgHr) : null,
+  }
+}
+export type LinkedWorkout = ReturnType<typeof workoutSummary> | { id: string; day: string; start: string; sport: string; missing: true }
+
+/** A link's current session: same id, or (when the id changed) the same sport that day starting within 3 hours. */
+function resolve(link: WorkoutLink, sessions: Session[]): Session | null {
+  const exact = sessions.find(s => s.id === link.id)
+  if (exact) return exact
+  const t = Date.parse(link.start)
+  let best: Session | null = null, gap = 3 * 3600e3
+  for (const s of sessions) {
+    if (s.day !== link.day || s.sport !== link.sport) continue
+    const g = Math.abs(Date.parse(s.start) - t)
+    if (g <= gap) { gap = g; best = s }
+  }
+  return best
+}
+
+function rawEntries() {
   return readRecords<JournalEntry>('journal', 'entry')
     .map(r => ({ id: r.id, ...r.data }))
     .sort((a, b) => (b.date + (b.time ?? '')).localeCompare(a.date + (a.time ?? '')) || b.updated.localeCompare(a.updated))
 }
 
-const find = (id: string) => journalEntries().find(e => e.id === id) ?? null
+/** Entries with their linked workouts resolved to the current sessions. */
+export function journalEntries(sessions = buildSessions().sessions) {
+  return rawEntries().map(e => withWorkouts(e, sessions))
+}
+
+function withWorkouts<E extends JournalEntry>(e: E, sessions: Session[]): Omit<E, 'workouts'> & { workouts: LinkedWorkout[] } {
+  const workouts = (e.workouts ?? []).map(l => { const s = resolve(l, sessions); return s ? workoutSummary(s) : { ...l, missing: true as const } })
+  return { ...e, workouts }
+}
+
+/** Workouts to offer when linking: the entry's day, the 6 days before it and the day after, newest first. */
+export function workoutsAround(day: string) {
+  if (!DAY.test(day)) throw new Error('Bad day.')
+  const from = addDays(day, -6), to = addDays(day, 1)
+  return buildSessions().sessions.filter(s => s.day >= from && s.day <= to)
+    .sort((a, b) => b.start.localeCompare(a.start)).map(workoutSummary)
+}
+
+/** The links to store for a list of session ids from the page. Ids that no longer exist keep their old link. */
+function linksFor(ids: unknown, prev: WorkoutLink[]): WorkoutLink[] {
+  if (!Array.isArray(ids) || ids.some(x => typeof x !== 'string' || x.length > 120)) throw new Error('Bad workout list.')
+  if (ids.length > MAX_LINKS) throw new Error(`Link at most ${MAX_LINKS} workouts to one entry.`)
+  const sessions = buildSessions().sessions, out: WorkoutLink[] = []
+  for (const id of new Set(ids as string[])) {
+    const s = sessions.find(x => x.id === id)
+    const link = s ? { id: s.id, day: s.day, start: s.start, sport: s.sport } : prev.find(l => l.id === id || resolve(l, sessions)?.id === id)
+    if (!link) throw new Error('That workout no longer exists.')
+    out.push(link)
+  }
+  return out
+}
+
+const find = (id: string) => rawEntries().find(e => e.id === id) ?? null
 
 /** Create or update an entry from the page. A changed body drops an old formatting (it no longer matches). */
-export function saveEntry(id: string, input: Partial<JournalEntry>) {
+export function saveEntry(id: string, input: Partial<Omit<JournalEntry, 'workouts'>> & { workouts?: unknown }) {
   const prev = find(id)
   const text = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : undefined)
   const date = typeof input.date === 'string' && DAY.test(input.date) ? input.date : prev?.date
@@ -29,11 +92,12 @@ export function saveEntry(id: string, input: Partial<JournalEntry>) {
     date, time: text(input.time, 20) ?? prev?.time ?? null,
     title: text(input.title, 300) ?? prev?.title ?? '', body, note: text(input.note, MAX_TEXT) ?? prev?.note ?? '',
     doc: prev?.doc && body === prev.body ? prev.doc : null, updated: new Date().toISOString(),
+    workouts: input.workouts !== undefined ? linksFor(input.workouts, prev?.workouts ?? []) : prev?.workouts ?? [],
   }
   // The merge keeps fields a row leaves null; an explicit null doc must win, so write it whole.
   if (prev) deleteRecord('journal', 'entry', id)
   upsertRecords([{ source: 'journal', kind: 'entry', id, day: date, data: entry }])
-  return { id, ...entry }
+  return withWorkouts({ id, ...entry }, buildSessions().sessions)
 }
 
 export const deleteEntry = (id: string) => deleteRecord('journal', 'entry', id)
@@ -91,5 +155,5 @@ export async function formatEntry(client: Anthropic, model: string, id: string) 
   }
   deleteRecord('journal', 'entry', id)
   upsertRecords([{ source: 'journal', kind: 'entry', id, day: entry.date, data: entry }])
-  return { id, ...entry }
+  return withWorkouts({ id, ...entry }, buildSessions().sessions)
 }

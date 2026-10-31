@@ -148,8 +148,13 @@ export const num = (v: unknown): number | null => {
 /** journal/entry, id = random. The athlete's own writing, or a letter/document he pasted in. `doc` is set once the
  *  text has been formatted (title, sender, tags, TL;DR, sections); the sections hold the original wording. */
 export type JournalBlock = { type: 'h' | 'p' | 'sig'; t: string; lead?: string }
+/** A workout linked to a journal entry: the session id plus enough to find it again if the id changes (a provisional
+ *  WHOOP/screenshot lift is replaced by its FitnessAI session once the export arrives). */
+export type WorkoutLink = { id: string; day: string; start: string; sport: string }
+
 export type JournalEntry = {
   date: string; time?: string | null; title: string; body: string; note?: string; updated: string
+  workouts?: WorkoutLink[]
   doc?: { from: string; tags: string[]; tldr: { k: string; v: string }[]; blocks: JournalBlock[] } | null
 }
 
