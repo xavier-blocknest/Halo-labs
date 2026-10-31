@@ -16,6 +16,7 @@ import { fitnessSets, fitnessWorkouts } from './fitnessai.ts'
 import { macroFactor, macroFactorQuick } from './macrofactor.ts'
 import { dietRules } from './diet.ts'
 import { macroFactorFoodLog } from './foodlog.ts'
+import { formSwims } from './form.ts'
 import { roadmap } from './plan.ts'
 import { protocolDoc } from './protocol.ts'
 import { questLabs } from './quest.ts'
@@ -29,6 +30,7 @@ const run = promisify(execFile)
 export const IMPORTERS: Importer[] = [
   whoopCycles, whoopSleeps, whoopWorkouts, whoopJournal, stravaCsv, fitnessWorkouts, fitnessSets, runnaRuns,
   macroFactor, macroFactorQuick, macroFactorFoodLog, questLabs, benchmarkDexa, vo2Report, roadmap, protocolDoc, dietRules,
+  formSwims,
 ]
 
 export type ImportResult = { file: string; status: 'imported' | 'duplicate' | 'unrecognized' | 'failed'; importer?: string; records?: number; detail?: string }

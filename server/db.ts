@@ -4,7 +4,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { open, seal, tag } from './crypto.ts'
 
-export type Source = 'whoop' | 'strava' | 'fitnessai' | 'runna' | 'macrofactor' | 'labs' | 'dexa' | 'vo2' | 'plan' | 'profile' | 'coach' | 'journal' | 'calendar'
+export type Source = 'whoop' | 'strava' | 'fitnessai' | 'runna' | 'macrofactor' | 'labs' | 'dexa' | 'vo2' | 'plan' | 'profile' | 'coach' | 'journal' | 'calendar' | 'form'
 
 export type RecordRow<T = unknown> = { source: Source; kind: string; id: string; day: string | null; data: T }
 

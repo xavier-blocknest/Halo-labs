@@ -47,3 +47,7 @@
 @media (pointer: coarse) {
   input, textarea, select { font-size: 16px !important; }
 }
+
+/* Training · Swim list: swims with FORM lengths open the swim view (src/app/SwimDetail.tsx). */
+.sport-row-go { transition: background .15s; border-radius: 6px; }
+.sport-row-go:hover { background: oklch(0.76 0.13 250 / 0.06); }

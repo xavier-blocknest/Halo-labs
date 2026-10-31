@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 
 type Sport = 'run' | 'swim' | 'ride' | 'strength'
-type Source = 'strava' | 'whoop' | 'fitnessai'
+type Source = 'form' | 'strava' | 'whoop' | 'fitnessai'
 type State = { prefs: Record<Sport, 'auto' | Source>; effective: Record<Sport, Source>; choices: Record<Sport, Source[]> }
 
 const SPORTS: [Sport, string][] = [['run', 'Runs'], ['swim', 'Swims'], ['ride', 'Rides'], ['strength', 'Strength']]
-const NAME: Record<Source, string> = { strava: 'Strava', whoop: 'WHOOP', fitnessai: 'FitnessAI' }
+const NAME: Record<Source, string> = { form: 'FORM', strava: 'Strava', whoop: 'WHOOP', fitnessai: 'FitnessAI' }
 
 /** Settings card: which app defines each sport's workouts (GET/PUT /api/activity-sources, server/dashboard/sessions.ts).
  *  Auto picks the usual app when it has that sport, else WHOOP. The chosen app sets the workout (distance, pace,
@@ -30,7 +30,7 @@ export function ActivitySources() {
     <section className="card">
       <header className="card-head"><h2>Activity sources</h2></header>
       <p className="hint" style={{ marginBottom: 12 }}>
-        Which app each kind of workout comes from. <b>Auto</b> uses Strava for runs and swims, WHOOP for rides and FitnessAI
+        Which app each kind of workout comes from. <b>Auto</b> uses Strava for runs, FORM goggles (else Strava) for swims, WHOOP for rides and FitnessAI
         for strength when they have data, and WHOOP otherwise. The chosen app sets the workout; WHOOP still adds heart rate
         and strain, and each workout counts once.
       </p>

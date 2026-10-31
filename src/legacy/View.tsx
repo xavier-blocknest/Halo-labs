@@ -9,6 +9,7 @@ import { RoadmapView } from '../app/RoadmapView'
 import { RecoveryWork } from '../app/RecoveryWork'
 import { LiftVolume } from '../app/LiftVolume'
 import { PersonalBests } from '../app/PersonalBests'
+import { SwimDetail } from '../app/SwimDetail'
 import { JournalPage } from '../app/JournalPage'
 import { CalendarPage, UpcomingCard } from '../app/CalendarPage'
 import { WeekPlan } from '../app/WeekPlan'
@@ -679,6 +680,7 @@ export function View({ v }: { v: any }) {
               ))}
             </div>
             {v.D?.training?.bests ? (<PersonalBests pb={v.D.training.bests} />) : null}
+            {v.swimOpen ? (<SwimDetail id={v.swimOpen} onClose={v.swimClose} />) : null}
             <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
               <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
                 <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
@@ -888,7 +890,7 @@ export function View({ v }: { v: any }) {
                 {(v.sportRows || []).map((sr: any, _i1: number) => (
                   <Fragment key={_i1}>
                     {" "}
-                    <div className="sport-row" style={{"display": "grid", "gridTemplateColumns": v.sportGrid, "gap": "12px", "padding": "10px 0", "borderTop": "1px solid oklch(1 0 0 / 0.07)", "fontSize": "13px", "fontVariantNumeric": "tabular-nums"}}>
+                    <div className={sr.cls} onClick={sr.go} role={sr.go ? 'button' : undefined} style={{"display": "grid", "gridTemplateColumns": v.sportGrid, "gap": "12px", "padding": "10px 0", "borderTop": "1px solid oklch(1 0 0 / 0.07)", "fontSize": "13px", "fontVariantNumeric": "tabular-nums", "cursor": sr.cur}}>
                       {" "}
                       {(sr.cells || []).map((ce: any, _i2: number) => (
                         <Fragment key={_i2}>

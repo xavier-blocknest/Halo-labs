@@ -1,6 +1,6 @@
 # Halo Labs
 
-Your personal training command center. It pulls in WHOOP and Strava, reads your exports (FitnessAI, Runna,
+Your personal training command center. It pulls in WHOOP and Strava, reads your exports (FORM swims, FitnessAI, Runna,
 MacroFactor, lab, DEXA and VO₂ reports), makes a daily Hard / Easy / Rest call, tracks your roadmap to your next race,
 and has an AI coach you can type or talk to.
 
@@ -70,8 +70,11 @@ coach read it. That's your call; the alternative is to leave Strava disconnected
   and milestones on the way, a typical week and notes for the coach. Already have a roadmap file in Halo Labs' format
   ([docs/roadmap-template.json](docs/roadmap-template.json))? Upload it instead; you can still edit it in the app.
 - **Activity sources**: Settings → Activity sources picks which app each kind of workout comes from (runs, swims,
-  rides, strength). **Auto** uses Strava for runs and swims, WHOOP for rides and FitnessAI for strength when they have
-  data, and WHOOP otherwise, so with only WHOOP connected everything comes from WHOOP.
+  rides, strength). **Auto** uses Strava for runs, FORM goggles (else Strava) for swims, WHOOP for rides and FitnessAI
+  for strength when they have data, and WHOOP otherwise, so with only WHOOP connected everything comes from WHOOP.
+- **FORM swim goggles**: upload a swim's CSV export (FORM app → swim → Export). Swims then come from FORM, length by
+  length; tap a swim on Training → Swim for sets, strokes, SWOLF and how the main set held up. Lengths the goggles
+  misread (impossibly fast, or no strokes counted) still count toward distance but are left out of pace and SWOLF.
 - **Coach**: Settings → Coach: keep the built-in **Coach** or **write your own** personality. Tell it things to
   remember ("remember I'm allergic to shellfish"); they show up under Settings → Coach memory.
 

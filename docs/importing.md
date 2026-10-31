@@ -12,6 +12,7 @@ is then emptied.
 |---|---|
 | WHOOP export: `physiological_cycles.csv`, `sleeps.csv`, `workouts.csv`, `journal_entries.csv` | `whoop/cycle`, `whoop/sleep` + `whoop/nap`, `whoop/workout`, `whoop/journal` |
 | Strava bulk export: `activities.csv` | `strava/activity` |
+| FORM Smart Swim goggles: per-swim CSV (`FORM_<date>_<time>.csv`; a swim header row, a blank line, then one row per length or rest) | `form/swim` (every length; glitchy lengths are flagged when read, not dropped). Auto makes FORM the swim source once imported |
 | FitnessAI: `workout*.json`, `userexerciseset*.json` | `fitnessai/workout`, `fitnessai/set` |
 | Runna: `activities*.json` | `runna/run` (runs mirrored from Strava are skipped unless linked to a plan workout) |
 | MacroFactor export (`.xlsx`) | `macrofactor/day`, `macrofactor/target`, `macrofactor/measurements` |

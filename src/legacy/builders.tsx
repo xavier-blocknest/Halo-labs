@@ -2,7 +2,7 @@
 // (this.props.D) and the athlete's saved state. Nothing here is hard-coded data: when a source has no
 // data the builders return empty states instead. Installed onto the Component prototype at the bottom.
 import React from 'react'
-import { startRecording, transcribe, voiceReady } from '../voice'
+import { END_OF_TURN_MS, startRecording, transcribe, voiceReady } from '../voice'
 import { activeCoach } from '../coachPersona'
 import { isSample } from '../sampleMode'
 import { VOICE, VoiceBlob } from '../app/VoiceBlob'
@@ -29,7 +29,13 @@ function chatProfile(D) {
   lines.push('Latest data per source: ' + Object.entries(D.lastData).map(([s, d]) => `${s} ${d}`).join(', ') + '.')
   if (w) lines.push(`WHOOP (${w.latest.day}): recovery ${w.latest.rec}%, HRV ${w.latest.hrv} ms (30-day avg ${w.avg30.hrv}), resting HR ${w.latest.rhr} (avg ${w.avg30.rhr}), respiratory ${w.latest.resp} (avg ${w.avg30.resp}), sleep performance ${w.latest.performance ?? '—'}% (slept ${hm(w.latest.sleepMin)} vs need ${hm(w.latest.needMin)}), strain so far today ${w.latest.strainToday ?? '—'}, 7-day strain ${w.load7} vs 30-day ${w.load30}.`)
   if (vo2) lines.push(`VO2 test ${vo2.day}: VO2max ${vo2.vo2max}, max HR ${vo2.maxHr}, zones ${vo2.zones.map(z => `${z.zone} ${z.lowHr ?? '<'}–${z.highHr ?? '+'}`).join(', ')}.`)
-  if (t) lines.push(`Training: streak ${t.streak} days; run ${t.kpis.runMonth.mi} mi this month (${t.kpis.runMonth.n} runs), ${t.kpis.runMonth.prevMi} last month; swim/bike/run ${t.kpis.sbrPerWeek} h/wk; strength ${t.kpis.strPerWeek}/wk; last ride ${t.kpis.lastRide ? t.kpis.lastRide.day : 'none'}. Heart rate, strain and zones for runs, swims and rides come from WHOOP, matched to each Strava activity (distance and pace from Strava).`)
+  if (t) lines.push(`Training: streak ${t.streak} days; run ${t.kpis.runMonth.mi} mi this month (${t.kpis.runMonth.n} runs), ${t.kpis.runMonth.prevMi} last month; swim/bike/run ${t.kpis.sbrPerWeek} h/wk; strength ${t.kpis.strPerWeek}/wk; last ride ${t.kpis.lastRide ? t.kpis.lastRide.day : 'none'}. Heart rate, strain and zones for runs, swims and rides come from WHOOP, matched to each activity (distance and pace from the activity's own app; swims from FORM goggles when imported).`)
+  const fs = t?.swim?.form ?? []
+  if (fs.length) lines.push('FORM swim technique (newest first; yards; pace and SWOLF over clean lengths, glitchy lengths left out; SWOLF = strokes + seconds per pool length): ' + fs.map(x => {
+    const dr = x.mainSet?.drift, mm = (v) => (v == null ? '—' : `${Math.floor(v / 60)}:${String(Math.round(v % 60)).padStart(2, '0')}`)
+    return `${x.day} ${x.name}: ${x.yd} yd, ${x.swimMin} min swimming + ${x.restMin} min rest` + (x.free ? `; freestyle ${x.free.pace}/100yd, SWOLF ${x.free.swolf}, ${x.free.strokes} strokes/length, ${x.free.rate} strokes/min, ${x.free.dpsYd} yd/stroke` : '') +
+      (dr ? `; main set ${x.mainSet.label}: SWOLF ${dr.swolf[0]}→${dr.swolf[1]}, pace ${mm(dr.paceS[0])}→${mm(dr.paceS[1])}/100yd, armband HR ${dr.hr[0]}→${dr.hr[1]} (first vs last ${dr.n} lengths)` : '') + (x.excluded ? `; ${x.excluded} lengths left out as bad readings` : '')
+  }).join(' | ') + '.')
   const p = D.plan
   if (p) lines.push(`Goal: ${p.goal.event}, ${p.goal.dateLabel}, ${p.goal.location} (${p.goal.daysTo} days)${p.goal.registered ? `, officially registered on ${p.goal.registered}` : ''}. ${p.goal.objective} Upcoming: ${p.milestones.filter(m => m.status !== 'completed').slice(0, 5).map(m => `${m.name} (${m.when}, ${m.status})`).join('; ')}. Weekly schedule: ${Object.entries(p.schedule).map(([d, x]) => `${d.slice(0, 3)} ${x.join(' + ')}`).join('; ')}.` + (p.deload?.active ? ` Deload week ${p.deload.start} to ${p.deload.end} at ${Math.round(p.deload.fraction * 100)}% weights.` : '') + (p.hard75 ? ` Sustainable 75 Hard: ${p.hard75.status === 'in_progress' ? `day ${p.hard75.day} of ${p.hard75.days}` : p.hard75.status}, ${p.hard75.start} to ${p.hard75.end}; daily rules: ${p.hard75.rules.join('; ')}. He tracks these in another app (no export): assume every day was completed unless he says otherwise; don't ask him to confirm them.` : '') + ` Unknowns: ${p.unknowns.join('; ') || 'none'}.` + (p.answered?.length ? ` Settled (don't ask again): ${p.answered.map(x => `${x.q}: ${x.a}`).join('; ')}.` : ''))
   const wp = D.weekPlans
@@ -250,8 +256,9 @@ function weekData() {
   // Session goals: counted from this week's saved plan when there is one, else the roadmap baseline.
   const c = t.weekCounts, ws = plan?.weeklySessions, tp = wp.this
   const count = sp => tp ? Object.values(tp.days).flat().filter(x => x.sport === sp).length : null
-  const b = (k, key, planned) => { const goal = Math.max(1, planned ?? Math.round(c.avg4[key]))
-    return { k, done: c.now[key], goal, pct: Math.min(100, Math.round(c.now[key] / goal * 100)) + '%', note: (planned != null ? `Plan ${planned} this week · ` : '') + `usual ${c.avg4[key]}`, c: A, nc: T3 } }
+  // A planned 0 stays 0 (e.g. a no-run week); only the usual-average fallback is floored at 1.
+  const b = (k, key, planned) => { const goal = planned ?? Math.max(1, Math.round(c.avg4[key]))
+    return { k, done: c.now[key], goal, pct: (goal ? Math.min(100, Math.round(c.now[key] / goal * 100)) : c.now[key] ? 100 : 0) + '%', note: (planned != null ? `Plan ${planned} this week · ` : '') + `usual ${c.avg4[key]}`, c: A, nc: T3 } }
   const wkBudget = !live ? [] : tp
     ? [b('Strength', 'strength', count('strength')), b('Runs', 'runs', count('run')), b('Swims', 'swims', count('swim')), b('Rides', 'rides', count('ride')), b('Active days', 'activeDays', 7)]
     : ws ? [b('Strength', 'strength', ws.strength), b('Runs', 'runs', ws.running), b('Swims', 'swims', ws.swimming), b('Active days', 'activeDays', 7)]
@@ -589,10 +596,11 @@ function sportTable(S, phone) {
   const hasDist = S.cols.some(c => /Miles|Yards|Lifted/.test(c[0]))
   const idx = S.cols.map((c, i) => (!phone || KEEP.has(c[0]) || (c[0] === 'Time' && !hasDist) ? i : -1)).filter(i => i >= 0)
   const widths = S.grid.split(' ')
-  return { sportGrid: idx.map(i => widths[i]).join(' '), sportCols: idx.map(i => ({ t: S.cols[i][0], a: S.cols[i][1] || 'left' })), sportRows: S.rows.map(cs => ({ cells: idx.map(i => cs[i]) })) }
+  return { sportGrid: idx.map(i => widths[i]).join(' '), sportCols: idx.map(i => ({ t: S.cols[i][0], a: S.cols[i][1] || 'left' })), sportRows: S.rows.map((cs, k) => ({ cells: idx.map(i => cs[i]), go: S.go?.[k] ?? undefined, cur: S.go?.[k] ? 'pointer' : 'default', cls: S.go?.[k] ? 'sport-row sport-row-go' : 'sport-row' })) }
 }
 
 // ---- Training ------------------------------------------------------------------------------------
+const SWIMC = 'oklch(0.76 0.13 250)' // swim blue (PersonalBests), marks swims that open the swim view
 function training() {
   const t = this.props.D.training
   if (!t) return { weeks: [], tMetricNote: 'No Strava data yet', tMetric: [], heat: [], tod: [], gear: [], sportOpts: [], sportTiles: [], sportChartLabel: '', sportBars: [], sportGrid: '1fr', sportCols: [], sportRows: [] }
@@ -611,7 +619,9 @@ function training() {
   let S
   if (sp === 'swim') { const s = t.swim; S = { tiles: [tl('Swims', s.n, '', s.first ? 'Since ' + fmtDay(s.first) : t.year), tl('Distance', s.yd.toLocaleString(), 'yd', t.year), tl('Longest', t.longest.swim ? t.longest.swim.v.toLocaleString() : '—', 'yd', t.longest.swim ? fmtDay(t.longest.swim.day) : ''), tl('Best pace', s.best?.pace ?? '—', '/100yd', s.best ? s.best.d : ''), tl('Avg heart rate', s.hr ?? '—', 'bpm', s.mhr ? 'Max ' + s.mhr : ''), tl('Swims', s.list.length, '', 'Shown below')],
     label: 'Yards per swim', bars: lastBars(s.list, 'yd', x => x.yd.toLocaleString()), grid: '50px minmax(0,1.4fr) 50px 52px 62px 48px 48px', cols: [['Date'], ['Swim'], ['Yards', 'right'], ['Time', 'right'], ['/100yd', 'right'], ['Avg HR', 'right'], ['Max HR', 'right']],
-    rows: s.list.map(x => [cell(x.d, 0, T3), cell(x.name), cell(x.yd.toLocaleString(), 'right'), cell(x.min + ' min', 'right', T2), cell(x.pace, 'right'), cell(x.hr, 'right', T2), cell(x.mhr, 'right', T2)]) } }
+    // Swims with FORM lengths open the swim view (src/app/SwimDetail.tsx); their names read as links.
+    rows: s.list.map(x => [cell(x.d, 0, T3), cell(x.detail ? x.name + ' ›' : x.name, 0, x.detail ? SWIMC : T1), cell(x.yd.toLocaleString(), 'right'), cell(x.min + ' min', 'right', T2), cell(x.pace, 'right'), cell(x.hr, 'right', T2), cell(x.mhr, 'right', T2)]),
+    go: s.list.map(x => (x.detail ? () => this.setState({ swimOpen: x.id }) : null)) } }
   else if (sp === 'bike') { const s = t.ride, lr = t.kpis.lastRide; S = { tiles: [tl('Rides', s.n, '', t.year + ' · over 1 mile'), tl('Distance', s.mi, 'mi', t.year), tl('Average speed', s.mph ?? '—', 'mph', ''), tl('Longest', t.longest.ride?.v ?? '—', 'mi', t.longest.ride ? fmtDay(t.longest.ride.day, { month: 'short', day: 'numeric', year: 'numeric' }) : ''), tl('Elevation', s.ft.toLocaleString(), 'ft', 'Total gain'), tl('Last ride', lr ? fmtDay(lr.day) : '—', '', lr ? lr.daysAgo + ' days ago' : '', lr && lr.daysAgo > 14 ? R : T1)],
     label: 'Miles per ride · last 12 rides', bars: lastBars(s.list, 'mi', x => x.mi), grid: '50px minmax(0,1.6fr) 50px 56px 44px 52px 52px', cols: [['Date'], ['Ride'], ['Miles', 'right'], ['Time', 'right'], ['mph', 'right'], ['Elev', 'right'], ['Avg HR', 'right']],
     rows: s.list.slice(0, 10).map(x => [cell(x.d, 0, T3), cell(x.name), cell(x.mi, 'right'), cell(x.min + ' min', 'right', T2), cell(x.mph, 'right'), cell(x.ft, 'right', T2), cell(x.hr, 'right', T2)]) } }
@@ -627,9 +637,10 @@ function training() {
     label: 'Distance per run (mi) · last 12 runs', bars: lastBars(s.list, 'mi', x => x.mi), grid: '50px minmax(0,1.6fr) 44px 48px 54px 44px 44px 140px', cols: [['Date'], ['Run'], ['Miles', 'right'], ['Pace', 'right'], ['Time', 'right'], ['Elev', 'right'], ['HR', 'right'], ['Shoes', 'right']],
     rows: s.list.slice(0, 10).map(x => [cell(x.d, 0, T3), cell(x.name), cell(x.mi, 'right'), cell(x.pace, 'right'), cell(x.min + ' min', 'right', T2), cell(x.ft, 'right', T2), cell(x.hr, 'right', T2), cell(x.gear, 'right', T2)]) } }
   return {
-    weeks, tMetricNote: MET[m][1] + ' Highlighted bar is the last full week. Runs and swims from Strava, lifts from FitnessAI, everything else from WHOOP; heart rate and strain from WHOOP. Each workout counts once.', tMetric: this.seg(Object.keys(MET).map(k => [k, MET[k][0]]), m, id => this.setState({ tMet: id })),
+    weeks, tMetricNote: MET[m][1] + ' Highlighted bar is the last full week. Each sport from the app chosen in Settings → Activity sources (by default swims from FORM, else Strava; runs from Strava; lifts from FitnessAI; everything else from WHOOP); heart rate and strain from WHOOP. Each workout counts once.', tMetric: this.seg(Object.keys(MET).map(k => [k, MET[k][0]]), m, id => this.setState({ tMet: id })),
     heat, tod, gear, sportOpts: this.seg([['run', 'Run'], ['swim', 'Swim'], ['bike', 'Bike'], ['str', 'Strength'], ['walk', 'Walk']], sp, id => this.setState({ sport: id })),
     sportTiles: S.tiles, sportChartLabel: S.label, sportBars: S.bars, ...sportTable(S, (this.state.vw ?? 1280) < 600),
+    swimOpen: this.state.swimOpen ?? null, swimClose: this._swimClose ??= () => this.setState({ swimOpen: null }),
   }
 }
 
@@ -1207,7 +1218,7 @@ async function listenTurn() {
   if (!(await this.ensureVoice())) return
   try {
     SFX.play('micOn')
-    this._rec = await startRecording({ endOnSilenceMs: 800, onEnd: () => this.finishRecording() })
+    this._rec = await startRecording({ endOnSilenceMs: END_OF_TURN_MS, onEnd: () => this.finishRecording() })
     this.setState({ listening: true, heard: 'Listening…', micErr: null })
   } catch (e) {
     this.setState({ listening: false, convo: false, micErr: e.name === 'NotAllowedError' ? 'Microphone access was blocked. Allow it in your browser settings to talk to Coach.' : 'Couldn\'t start the microphone.' })
@@ -1306,7 +1317,7 @@ async function voiceListen() {
   if (this._vClosed || !this.state.vOn || this._vRec) return
   if (this.state.vMuted) { this.voiceSetMode('idle'); return }
   try {
-    this._vRec = await startRecording({ endOnSilenceMs: 800, onLevel: l => { VOICE.level = l }, onEnd: () => this.voiceFinish() })
+    this._vRec = await startRecording({ endOnSilenceMs: END_OF_TURN_MS, onLevel: l => { VOICE.level = l }, onEnd: () => this.voiceFinish() })
     if (this._vClosed) { this._vRec.cancel(); this._vRec = null; return }
     this.voiceSetMode('listening'); this.setState({ vHeard: '', vErr: null })
   } catch (e) {

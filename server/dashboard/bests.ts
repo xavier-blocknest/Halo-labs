@@ -11,6 +11,7 @@ import { readRecords } from '../db.ts'
 import type { LiftSet, StravaActivity } from '../model.ts'
 import type { Session } from './sessions.ts'
 import { diffDays, medium } from './time.ts'
+import { swimPace } from './swims.ts'
 
 const MI = 1609.344, YD = 0.9144, FT = 0.3048
 const r1 = (x: number) => Math.round(x * 10) / 10
@@ -46,7 +47,8 @@ export function personalBests(acts: Session[], day: string) {
   // Swim.
   const swims = of('swim')
   const longestSwim = [...swims].sort((a, b) => b.distanceM! - a.distanceM!)[0]
-  const fastSwim = swims.filter(a => a.distanceM! >= MIN_SWIM_M && a.movingS).sort((a, b) => a.movingS! / a.distanceM! - b.movingS! / b.distanceM!)[0]
+  // Pace over the clean lengths for FORM swims (glitchy lengths would flatter it), moving time otherwise.
+  const fastSwim = swims.filter(a => a.distanceM! >= MIN_SWIM_M && swimPace(a)).sort((a, b) => swimPace(a)! - swimPace(b)!)[0]
 
   // Ride: WHOOP ride sessions and Strava rides (anything recorded with a distance).
   const rides: { day: string; name: string; distanceM: number | null; movingS: number | null; elapsedS: number | null; elevGainM: number | null }[] = [...of('ride'),
@@ -81,7 +83,7 @@ export function personalBests(acts: Session[], day: string) {
     run: { efforts, pending, longest: longestRun ? best(String(r1(longestRun.distanceM! / MI)), 'mi', clock(longestRun.movingS ?? longestRun.elapsedS ?? 0), longestRun) : null },
     swim: {
       longest: longestSwim ? best(Math.round(longestSwim.distanceM! / YD).toLocaleString(), 'yd', clock(longestSwim.movingS ?? longestSwim.elapsedS ?? 0), longestSwim) : null,
-      fastest: fastSwim ? best(pace(fastSwim.movingS! / (fastSwim.distanceM! / YD / 100)), '/100 yd', `over ${Math.round(fastSwim.distanceM! / YD).toLocaleString()} yd`, fastSwim) : null,
+      fastest: fastSwim ? best(pace(swimPace(fastSwim)! * YD * 100), '/100 yd', `over ${Math.round(fastSwim.distanceM! / YD).toLocaleString()} yd`, fastSwim) : null,
     },
     ride: {
       longest: longestRide ? best(String(r1(longestRide.distanceM! / MI)), 'mi', clock(longestRide.movingS ?? longestRide.elapsedS ?? 0), longestRide) : null,

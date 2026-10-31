@@ -15,7 +15,7 @@ import { backfillEmbeddings, embedStatus, forgetHistory, historyStats, initMemor
 import { checkUploadToken, createUploadToken, listUploadTokens, revokeUploadToken, throttled } from './uploadTokens.ts'
 import { verifyKey, wipeData, deleteSource, getSecret, setSecret, upsertRecords, getState, lastError, lastRuns, openDb, recentImports, setState, sourceSummary } from './db.ts'
 import { dashboard } from './dashboard/index.ts'
-import { buildSessions, SOURCE_CHOICES, SOURCE_SPORTS, SOURCES_KEY, sourcePrefs, type SourcePrefs } from './dashboard/sessions.ts'
+import { buildSessions, swimView, SOURCE_CHOICES, SOURCE_SPORTS, SOURCES_KEY, sourcePrefs, type SourcePrefs } from './dashboard/sessions.ts'
 import { parseWhen, roadmapDoc, roadmapEdits, SCHEDULE_DAYS, STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
 import { today } from './dashboard/time.ts'
 import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry, workoutsAround } from './journal.ts'
@@ -95,6 +95,10 @@ const readBody = async (req: IncomingMessage) => (await readBytes(req, MAX_BODY)
 
 const isProvider = (p: string | undefined): p is Provider => PROVIDERS.includes(p as Provider)
 
+/** "Right now it is Saturday, October 31, 2026, 2:14 pm (America/Denver)." Computed per request, so the coach always
+ *  knows the real local day and time, even when the page has been open since yesterday. */
+const nowLine = () => `Right now it is ${new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date()).replace(' at ', ', ').replace(' AM', ' am').replace(' PM', ' pm')} (${TZ}). Use this for "today", "tonight", "tomorrow" and how much of the day is left; it overrides any older date elsewhere in this prompt.`
+
 const REFUSED = "I can't help with that one. Try asking another way."
 
 /** POST /api/complete. With stream: true the reply arrives as NDJSON while Claude writes it ({"d": text} per chunk,
@@ -115,7 +119,7 @@ async function complete(req: IncomingMessage, res: ServerResponse) {
     ...(quick ? { thinking: { type: 'between_tools' as const } } : {}),
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default' as const,
-    system: block ? `${system ?? ''}\n\n${block}` : system,
+    system: [nowLine(), system, block].filter(Boolean).join('\n\n'),
     messages: messages.slice(-12),
   }
   const textOfReply = (m: Anthropic.Beta.BetaMessage) => m.content.flatMap(b => (b.type === 'text' ? [b.text] : [])).join('').trim()
@@ -634,6 +638,11 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
         if (req.method === 'PUT') return send(res, 200, { event: saveEvent(cm[1], JSON.parse(await readBody(req))) })
         if (req.method === 'DELETE') { deleteEvent(cm[1]); return send(res, 200, { ok: true }) }
       } catch (e) { return send(res, 400, { error: (e as Error).message }) }
+    }
+    const sw = /^\/api\/swims\/([^/]+)$/.exec(url.pathname)
+    if (sw && req.method === 'GET') {
+      const v = swimView(decodeURIComponent(sw[1]))
+      return v ? send(res, 200, v) : send(res, 404, { error: 'No FORM data for this swim.' })
     }
     if (url.pathname === '/api/journal' && req.method === 'GET') return send(res, 200, { entries: journalEntries() })
     if (url.pathname === '/api/journal/workouts' && req.method === 'GET') {

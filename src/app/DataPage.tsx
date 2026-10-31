@@ -17,6 +17,7 @@ import { Uploader } from './Uploader'
 const SOURCES: { id: string; name: string; what: string; connector?: Connector['id']; staleDays?: number }[] = [
   { id: 'whoop', name: 'WHOOP', what: 'Recovery, HRV, sleep, strain, workouts', connector: 'whoop', staleDays: 2 },
   { id: 'strava', name: 'Strava', what: 'Runs, rides, swims, walks, gear', connector: 'strava', staleDays: 2 },
+  { id: 'form', name: 'FORM', what: 'Swims length by length: sets, strokes, SWOLF (CSV export)' },
   { id: 'fitnessai', name: 'FitnessAI', what: 'Strength workouts, sets, muscle activation', staleDays: 7 },
   { id: 'runna', name: 'Runna', what: 'Plan runs and splits' },
   { id: 'macrofactor', name: 'MacroFactor', what: 'Food log, macros, weight trend, expenditure, steps', staleDays: 3 },
@@ -30,7 +31,7 @@ const KIND_LABEL: Record<string, [string, string]> = {
   cycle: ['day', 'days'], sleep: ['sleep', 'sleeps'], nap: ['nap', 'naps'], workout: ['workout', 'workouts'], journal: ['journal answer', 'journal answers'],
   activity: ['activity', 'activities'], gear: ['gear item', 'gear items'], set: ['set', 'sets'], run: ['run', 'runs'], day: ['day', 'days'],
   target: ['target', 'targets'], measurements: ['measurement', 'measurements'], draw: ['draw', 'draws'], result: ['result', 'results'],
-  scan: ['scan', 'scans'], test: ['test', 'tests'], body: ['', ''],
+  scan: ['scan', 'scans'], test: ['test', 'tests'], swim: ['swim', 'swims'], body: ['', ''],
 }
 const countText = (n: number, kind: string) => { const l = KIND_LABEL[kind] ?? [kind, kind]; return `${n.toLocaleString()} ${n === 1 ? l[0] : l[1]}` }
 

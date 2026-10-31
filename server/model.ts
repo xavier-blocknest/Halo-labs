@@ -117,6 +117,46 @@ export type Vo2Test = {
   recovery: { peak: number | null; after1m: number | null; after2m: number | null } | null
 }
 
+/** form/swim, id = start. One swim from a FORM Smart Swim goggles CSV export: the header (pool, devices) and every pool
+ *  length in order, as recorded. Nothing is filtered here: glitchy lengths (impossible times, a freestyle length with
+ *  no strokes, a mislabelled stroke) are flagged when read (`server/dashboard/swims.ts`), so the rules can change
+ *  without re-importing. Distances in metres (yard pools converted); `hr`/`maxHr` from the goggles' paired armband
+ *  (null when it had no reading), used only for the per-length view: a swim's impact (HR, strain, zones, calories)
+ *  comes from WHOOP. */
+export type FormSwim = {
+  start: string; end: string | null; tz: string; title: string | null; variant: string; poolM: number | null; poolUnit: 'm' | 'yd'
+  hrDevice: string | null; device: string | null; firmware: string | null
+  lengths: SwimLength[]
+}
+/** One length. `atS` = seconds from the swim's start when the length began; `restS` = rest right after it; `set` =
+ *  FORM's set number and `setLabel` its label ("17x25"); `stroke` = FORM's code (FR, BK, BR, FL, DR = drill, IM, …). */
+export type SwimLength = {
+  set: number; setLabel: string; stroke: string; atS: number; s: number; m: number; restS: number
+  strokes: number | null; rate: number | null; dps: number | null; swolf: number | null; hr: number | null; maxHr: number | null; kcal: number | null
+}
+
+/** Local wall-clock time in a named time zone ("2026-10-31T10:06:47", "America/Denver") -> UTC ISO. */
+export function zonedToUtc(local: string, tz = TZ): string {
+  const guess = Date.parse(local + 'Z')
+  const offsetAt = (t: number) => {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      .formatToParts(new Date(t)).map(x => [x.type, x.value]))
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - t
+  }
+  let t = guess - offsetAt(guess)
+  const o2 = offsetAt(t)
+  if (guess - o2 !== t) t = guess - o2
+  return isoSec(new Date(t).toISOString())
+}
+
+/** UTC offset like "-06:00" of a named time zone at an instant. */
+export function offsetOf(isoUtc: string, tz = TZ): string {
+  const t = Date.parse(isoUtc), local = Date.parse(zonedLocal(isoUtc, tz) + 'Z'), mins = Math.round((local - t) / 60_000)
+  const a = Math.abs(mins)
+  return `${mins < 0 ? '-' : '+'}${String(Math.floor(a / 60)).padStart(2, '0')}:${String(a % 60).padStart(2, '0')}`
+}
+const zonedLocal = (isoUtc: string, tz: string) => new Intl.DateTimeFormat('sv-SE', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(isoUtc)).replace(' ', 'T')
+
 /** Local calendar day of a UTC instant in the athlete's time zone. */
 export function dayOf(isoUtc: string, tz = TZ): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(isoUtc))

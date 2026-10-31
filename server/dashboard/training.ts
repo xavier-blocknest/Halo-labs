@@ -1,9 +1,11 @@
 // Training numbers (spec section 04 · Training) from sessions: one per workout, each sport from its own source
-// of truth (runs and swims: Strava; lifts: FitnessAI; everything else: WHOOP; impact data from WHOOP). See sessions.ts.
+// of truth, chosen in Settings → Activity sources (by default swims: FORM, else Strava; runs: Strava; lifts: FitnessAI;
+// everything else: WHOOP; impact data from WHOOP). See sessions.ts. Swim pace for FORM swims leaves out glitchy lengths (swims.ts).
 import { readRecords } from '../db.ts'
 import type { StravaGear } from '../model.ts'
 import { personalBests } from './bests.ts'
 import { buildSessions, type Session } from './sessions.ts'
+import { swimPace } from './swims.ts'
 import { addDays, diffDays, dow, localHour, localTime, short, weekStart } from './time.ts'
 
 const MI = 1609.344, YD = 0.9144, FT = 0.3048
@@ -85,8 +87,8 @@ export function trainingSummary(today: string) {
   const ym = today.slice(0, 7), prevYm = addDays(`${ym}-01`, -1).slice(0, 7)
 
   const swims = of('swim').filter(a => a.day.startsWith(year))
-  const swimRow = (a: Act) => ({ day: a.day, d: short(a.day), name: a.name, yd: Math.round((a.distanceM ?? 0) / YD), min: Math.round(mins(a)), pace: a.distanceM ? pace((a.movingS ?? 0) / (a.distanceM / YD / 100)) : '', hr: a.avgHr ? Math.round(a.avgHr) : null, mhr: a.maxHr ? Math.round(a.maxHr) : null })
-  const bestSwim = swims.filter(a => (a.distanceM ?? 0) >= 200 && a.movingS).sort((a, b) => a.movingS! / a.distanceM! - b.movingS! / b.distanceM!)[0]
+  const swimRow = (a: Act) => { const p = swimPace(a); return { id: a.id, detail: !!a.swim, day: a.day, d: short(a.day), name: a.name, yd: Math.round((a.distanceM ?? 0) / YD), min: Math.round(mins(a)), pace: p ? pace(p * YD * 100) : '', swolf: a.swim?.free?.swolf ?? null, hr: a.avgHr ? Math.round(a.avgHr) : null, mhr: a.maxHr ? Math.round(a.maxHr) : null } }
+  const bestSwim = swims.filter(a => (a.distanceM ?? 0) >= 200 && swimPace(a)).sort((a, b) => swimPace(a)! - swimPace(b)!)[0]
 
   const rides = of('ride').filter(a => (a.distanceM ?? 0) >= MI)
   const rideRow = (a: Act) => ({ day: a.day, d: short(a.day), name: a.name, mi: r1(a.distanceM! / MI), min: Math.round(mins(a)), mph: a.movingS ? r1(a.distanceM! / MI / (a.movingS / 3600)) : null, ft: Math.round((a.elevGainM ?? 0) / FT), hr: a.avgHr ? Math.round(a.avgHr) : null })
@@ -155,8 +157,10 @@ export function trainingSummary(today: string) {
     },
     swim: {
       n: swims.length, yd: sum(swims.map(a => Math.round((a.distanceM ?? 0) / YD))), first: swims.at(-1)?.day ?? null,
-      best: bestSwim ? { pace: pace(bestSwim.movingS! / (bestSwim.distanceM! / YD / 100)), d: short(bestSwim.day), name: bestSwim.name } : null,
+      best: bestSwim ? { pace: pace(swimPace(bestSwim)! * YD * 100), d: short(bestSwim.day), name: bestSwim.name } : null,
       hr: Math.round(avgOf(swims.map(a => a.avgHr)) ?? 0) || null, mhr: Math.max(0, ...swims.map(a => a.maxHr ?? 0)) || null, list: swims.slice(0, 12).map(swimRow),
+      // FORM technique per swim (newest 8), for the coach: freestyle pace/SWOLF/strokes over clean lengths, main-set drift.
+      form: of('swim').filter(a => a.swim).slice(0, 8).map(a => ({ day: a.day, name: a.name, yd: Math.round((a.distanceM ?? 0) / YD), swimMin: Math.round(a.swim!.movingS / 60), restMin: Math.round(a.swim!.restS / 60), excluded: a.swim!.excluded, free: a.swim!.free, mainSet: a.swim!.mainSet })),
     },
     ride: {
       n: rides.filter(a => a.day.startsWith(year)).length, mi: r1(sum(rides.filter(a => a.day.startsWith(year)).map(a => a.distanceM! / MI))),

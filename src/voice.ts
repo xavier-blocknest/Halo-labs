@@ -3,6 +3,8 @@
 
 const TARGET_RATE = 16_000
 const MAX_SECONDS = 60
+/** Quiet time after speech before a hands-free turn ends. Long enough for a mid-sentence pause. */
+export const END_OF_TURN_MS = 2000
 
 export type Recorder = { stop: () => Promise<Blob | null>; cancel: () => void }
 
