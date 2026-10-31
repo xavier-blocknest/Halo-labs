@@ -24,7 +24,7 @@ export function DeleteAll() {
     } catch (x) { setErr((x as Error).message); setBusy(false) }
   }
   return (
-    <section className="card">
+    <section className="card danger-zone">
       <header className="card-head"><h2>Delete all data</h2></header>
       <p className="hint" style={{ marginBottom: 12 }}>
         Start over with a clean slate: deletes every workout, recovery and sleep record, labs, scans, food, journal,
