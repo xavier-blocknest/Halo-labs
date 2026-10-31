@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 type Status = { current: string | null; latest: string | null; behind: number; changes: string[]; checkedAt: string | null; error: string | null; updating: boolean; terminal: boolean }
 const DISMISSED = 'halo-update-later' // the version "Later" was clicked for (this device)
-const POLL_MS = 30 * 60_000
+const POLL_MS = 5 * 60_000 // and whenever the page comes back to the foreground
 
 const getStatus = (): Promise<Status | null> => fetch('/api/update/status').then(r => (r.ok ? r.json() : null)).catch(() => null)
 
@@ -27,7 +27,12 @@ function useUpdate() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const load = useCallback(() => { void getStatus().then(setS) }, [])
-  useEffect(() => { load(); const t = setInterval(load, POLL_MS); return () => clearInterval(t) }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, POLL_MS), onVisible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible) }
+  }, [load])
   const update = async () => {
     if (!s?.behind) return
     setBusy(true); setErr(null)
@@ -73,7 +78,7 @@ export function UpdatesCard() {
     <section className="card">
       <header className="card-head"><h2>Updates</h2><button className="btn" disabled={checking || busy} onClick={check}>{checking ? 'Checking…' : 'Check now'}</button></header>
       <p className="hint" style={{ marginBottom: 8 }}>
-        Version {s.current ?? 'unknown'}{when ? ` · checked ${when}` : ''}. Halo Labs checks for a new version every few hours.
+        Version {s.current ?? 'unknown'}{when ? ` · checked ${when}` : ''}. Halo Labs checks for a new version every 15 minutes.
       </p>
       {s.error && <p className="banner alert">{s.error}</p>}
       {!s.error && !s.behind && s.checkedAt && <p className="hint good">You're on the latest version.</p>}

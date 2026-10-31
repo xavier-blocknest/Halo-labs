@@ -1,5 +1,5 @@
-// App updates: the code folder is a git clone of the Halo Labs repository. Every few hours (and from Settings →
-// Updates) this fetches origin/main and counts the new commits; "Update now" merges them in, and vite and node --watch
+// App updates: the code folder is a git clone of the Halo Labs repository. Every 15 minutes (sooner when the page
+// asks for the status, and from Settings → Updates) this fetches origin/main and counts the new commits; "Update now" merges them in, and vite and node --watch
 // (scripts/start.sh) pick up the new code by themselves (the server restarts mid-request when server/ changes, so the
 // page polls the status until it reports the new version). An update that changes package-lock.json or the
 // Dockerfile can't be applied from inside the running app: the status says so, and ./halo update does it on the Mac.
@@ -7,7 +7,7 @@
 import { execFile } from 'node:child_process'
 import { setting } from './settings.ts'
 
-const CHECK_EVERY_MS = 6 * 60 * 60_000
+const CHECK_EVERY_MS = 15 * 60_000 // a quiet git fetch; also started when the page asks and the last check is older
 const BRANCH = 'main'
 
 export type UpdateStatus = {
@@ -36,6 +36,7 @@ function clean(msg: string) {
 /** The cached status, with the running version and the count of new commits read fresh from the local clone (no
  *  network): they change when an update lands, possibly as a merge commit, and the server restarts. */
 export async function updateStatus() {
+  if (!checking && (!st.checkedAt || Date.now() - Date.parse(st.checkedAt) > CHECK_EVERY_MS)) void checkForUpdate() // in the background
   try {
     const [current, behind] = await Promise.all([git(['rev-parse', '--short', 'HEAD']), git(['rev-list', '--count', `HEAD..origin/${BRANCH}`]).catch(() => String(st.behind))])
     st = { ...st, current, behind: Number(behind) || 0, ...(Number(behind) ? {} : { changes: [] }) }
@@ -43,7 +44,11 @@ export async function updateStatus() {
   return st
 }
 
-export async function checkForUpdate() {
+let checking: Promise<UpdateStatus> | null = null
+/** Fetch origin/main and compare. Concurrent calls share one fetch. */
+export function checkForUpdate() { return (checking ??= fetchAndCompare().finally(() => { checking = null })) }
+
+async function fetchAndCompare() {
   try {
     await git(['fetch', '--quiet', 'origin', BRANCH])
     const [current, latest, count, log, files] = await Promise.all([
