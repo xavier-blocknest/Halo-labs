@@ -1,9 +1,9 @@
 // Coach personalities, shared by chat, voice and the morning brief so all three sound like the same coach.
-// The athlete picks one in Settings (stored as im4-coach, synced across devices), or writes his own (im4-coachcustom).
+// The athlete keeps the built-in Coach or writes his own in Settings (stored as im4-coach, synced across devices), or writes his own (im4-coachcustom).
 // Each sets tone only: the factual rules in each prompt still apply. No personal data here: the bundle is served
 // before login, so facts about the athlete come from the profile and the Coach memory notes (server-side, encrypted).
 
-export type CoachId = 'coach' | 'tough' | 'custom'
+export type CoachId = 'coach' | 'custom'
 export type Coach = { id: CoachId; name: string; blurb: string; persona: string }
 
 const COACH = `WHO YOU ARE
@@ -23,26 +23,6 @@ HOW YOU SOUND
 • Medium length by default: lead with the call, then the reasons and actions that matter. Go longer when the question needs it or he asks for detail.
 • Never invent past athletes, anecdotes, studies or statistics: your evidence is his own data.`
 
-const TOUGH = `WHO YOU ARE
-You are the athlete's tough-love coach: blunt, relentless about accountability, and on his side. You coach one athlete, named in the profile below. You are an original character: never claim to be, or quote as your own, any real person, and never invent experiences of your own.
-
-HOW YOU SOUND
-• Start on the point. No greeting, no "great question", no warm-up. Use his name rarely.
-• Short sentences. Talk, don't write a report. Bullets only when you hand him a plan or a list.
-• Humor: dry and sarcastic, aimed at excuses and overthinking. Never at injury, illness, mental health, family or real recovery needs.
-• Swearing is fine when it lands. Turn it down to zero for pain, injury, illness or anything medical.
-• End on one clear action.
-
-HOW YOU COACH
-• Hold up the mirror with his own numbers: planned vs done, sleep, recovery, food logged, what he committed to before.
-• A missed session: what happened, was it real, what's the fix. No speeches.
-• A real win: say exactly what he did and why it matters, then point at the next target.
-• Discouraged: remind him of his documented wins from the profile and notes. Never treat a future goal as done.
-• Pain or injury: conservative, every time. Hard is a choice; hurt is a signal.
-
-NEVER
-Flatter. Pad. Sound like an assistant. Invent athletes, stories, studies or statistics: your evidence is his data. Confuse suffering with progress.`
-
 export const CUSTOM_KEY = 'im4-coachcustom'
 export type CustomCoach = { name: string; persona: string }
 
@@ -61,7 +41,6 @@ export function saveCustomCoach(c: CustomCoach | null) {
 
 export const BUILT_IN: Coach[] = [
   { id: 'coach', name: 'Coach', blurb: 'Data-driven sports scientist: direct, specific, warm underneath.', persona: COACH },
-  { id: 'tough', name: 'Tough Love', blurb: 'Blunt accountability, short sentences, some swearing; conservative on injury.', persona: TOUGH },
 ]
 
 /** Built-in coaches plus the athlete's own, when he has written one. */
@@ -72,7 +51,7 @@ export function coaches(): Coach[] {
 
 export const COACH_KEY = 'im4-coach'
 
-/** The coach picked in Settings; the first one when nothing is saved yet. */
+/** The coach picked in Settings; the built-in Coach when nothing (or a removed coach) is saved. */
 export function activeCoach(): Coach {
   let id: string | null = null
   try { id = localStorage.getItem(COACH_KEY) } catch { /* private mode */ }

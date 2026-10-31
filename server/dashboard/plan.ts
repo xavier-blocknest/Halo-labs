@@ -68,7 +68,16 @@ function withEdits(doc: Doc, e: RoadmapEdits) {
   return d
 }
 
-const SCHEDULE_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+/** The roadmap as the planner edits it: the newest roadmap (uploaded or saved by the planner) with the in-app edits applied. */
+export function roadmapDoc(): { doc: Doc; day: string | null } | null {
+  const rec = readRecords<Doc>('plan', 'roadmap').at(-1)
+  if (!rec) return null
+  const d = withEdits(rec.data, roadmapEdits())
+  d.milestones = d.milestones.map(({ _edited, _added, hidden, ...m }: Doc) => m)
+  return { doc: d, day: rec.day }
+}
+
+export const SCHEDULE_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 export const plannedSport = (item: string) => (/\brun/i.test(item) ? 'run' : /swim/i.test(item) ? 'swim' : /ride|bike|cycl/i.test(item) ? 'ride' : /rest/i.test(item) ? 'rest' : 'strength')
 
 export function planSummary(today: string, longest: { swim?: { v: number; day: string } | null; ride?: { v: number; day: string } | null; run?: { v: number; day: string } | null } | null) {
@@ -78,7 +87,8 @@ export function planSummary(today: string, longest: { swim?: { v: number; day: s
   const raceDay = /^\d{4}-\d{2}-\d{2}$/.test(g.date ?? '') ? g.date : null
   const milestones = (d.milestones ?? []).map((x: Doc) => {
     const when = parseWhen(x.date ?? x.date_range)
-    const big = !!(x.date && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.status === 'goal' || /5k|10k|race|ironman|70\.3|marathon|spartan/i.test(x.name)))
+    // A race: marked in the planner (race: true/false), else guessed from the name.
+    const big = !!(x.date && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.status === 'goal' || (x.race ?? /5k|10k|race|ironman|70\.3|marathon|spartan/i.test(x.name))))
     return { name: x.name as string, status: x.status as string, when: x.date_range ?? (when ? (when.start === when.end ? medium(when.start) : x.date) : x.date ?? ''), start: when?.start ?? null, end: when?.end ?? null, big,
       daysTo: when && when.start === when.end ? diffDays(when.start, today) : null, targetTime: x.target_time ?? null,
       date: x.date ?? null, dateRange: x.date_range ?? null, registeredOn: x.registered_on ?? null, edited: !!x._edited, added: !!x._added }
@@ -87,7 +97,7 @@ export function planSummary(today: string, longest: { swim?: { v: number; day: s
   const deload = dl ? { start: dl[1], end: dl[2], active: today >= dl[1] && today <= dl[2], fraction: d.deload?.planned_weight_fraction_of_normal ?? null, approach: d.deload?.approach ?? '' } : null
   const schedule = Object.fromEntries(SCHEDULE_DAYS.map(k => [k, (d.current_training_schedule?.[k] ?? []) as string[]]))
   const MI: Record<string, number> = { '5k': 3.1, '10k': 6.2, '10 miles': 10, '12 miles': 12, 'half marathon': 13.1 }
-  const ladder = ['5K', ...(d.running?.future_progression ?? [])].map((k: string) => ({ k, mi: MI[k.toLowerCase()] ?? Number.parseFloat(k) }))
+  const ladder = !d.running ? [] : ['5K', ...(d.running.future_progression ?? [])].map((k: string) => ({ k, mi: MI[k.toLowerCase()] ?? Number.parseFloat(k) }))
   const phases = (d.swimming?.training_phases ?? []).map((p: Doc) => ({ ...p, ...(parseWhen(p.period) ?? {}) }))
   const legs = g.distances ? [
     { k: 'Swim', goalKm: g.distances.swim_km, goal: Math.round(g.distances.swim_km * 1093.6), unit: 'yd', done: longest?.swim?.v ?? 0, day: longest?.swim?.day ?? null },

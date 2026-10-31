@@ -1,6 +1,6 @@
 // Roadmap page layout from the Claude Design prototype (v4), converted by scripts/dc-to-jsx.py; values bound to data.
 import { Fragment } from 'react'
-import { RoadmapEditor } from './RoadmapEditor'
+import { RoadmapPlanner } from './RoadmapPlanner'
 import './roadmap.css'
 
 const HOVER = ""
@@ -267,7 +267,7 @@ export function RoadmapView({ v }: { v: any }) {
                   {v.msDone}
                 </span>
                 <button onClick={v.rmEditOpen} className="rme-open" style={{"cursor": "pointer", "fontFamily": "'IBM Plex Sans',system-ui,sans-serif", "fontSize": "12px", "padding": "5px 10px", "borderRadius": "8px", "border": "1px solid oklch(0.82 0.13 210 / 0.4)", "background": "transparent", "color": "oklch(0.82 0.13 210)"}}>
-                  {"Edit"}
+                  {"Edit roadmap"}
                 </button>
                 <div style={{"display": "flex", "gap": "2px", "padding": "3px", "borderRadius": "10px", "background": "oklch(1 0 0 / 0.04)", "border": "1px solid oklch(1 0 0 / 0.07)"}}>
                   {(v.msTabs || []).map((o: any, _i1: number) => (
@@ -393,6 +393,7 @@ export function RoadmapView({ v }: { v: any }) {
         </div>
         {" "}
         <div style={{"display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(min(100%,340px),1fr))", "gap": "16px", "alignItems": "stretch"}}>
+          {v.hasBike ? (
           <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
             <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
               <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
@@ -435,6 +436,8 @@ export function RoadmapView({ v }: { v: any }) {
               {v.rmT.bikeNote}
             </span>
           </section>
+          ) : null}
+          {v.hasLadder ? (
           <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
             <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
               <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
@@ -484,8 +487,10 @@ export function RoadmapView({ v }: { v: any }) {
               {v.rmT.ladderNote}
             </span>
           </section>
+          ) : null}
         </div>
         <div style={{"display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(min(100%,380px),1fr))", "gap": "16px", "alignItems": "stretch"}}>
+          {v.hasProgress ? (
           <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
             <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
               <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
@@ -543,6 +548,7 @@ export function RoadmapView({ v }: { v: any }) {
               {" "}
             </div>
           </section>
+          ) : null}
           <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
             <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
               <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
@@ -604,6 +610,7 @@ export function RoadmapView({ v }: { v: any }) {
             </div>
           </section>
         </div>
+        {v.hasPrep ? (
         <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "24px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
           <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
             <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
@@ -668,8 +675,9 @@ export function RoadmapView({ v }: { v: any }) {
             {" "}
           </div>
         </section>
+        ) : null}
       </div>
-      {v.rmEditOn ? (<RoadmapEditor plan={v.D.plan} today={v.D.today} onClose={v.rmEditClose} />) : null}
+      {v.rmEditOn ? (<RoadmapPlanner today={v.D.today} onClose={v.rmEditClose} />) : null}
     </>
   )
 }

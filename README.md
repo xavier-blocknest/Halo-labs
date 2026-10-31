@@ -66,10 +66,10 @@ coach read it. That's your call; the alternative is to leave Strava disconnected
 
 - **Settings → Upload data**: drag in exports or PDFs (or a zip of them). Files are recognized by their content.
   See [docs/importing.md](docs/importing.md) for every supported format.
-- **Roadmap**: copy [docs/roadmap-template.json](docs/roadmap-template.json), fill it in with your goal race and milestones
-  (or ask Claude to fill it in from a description of your goals), and upload it. After that you can edit races and dates
-  in the app.
-- **Coach**: Settings → Coach picks the personality (**Coach**, **Tough Love**, or **write your own**). Tell it things to
+- **Roadmap**: on the Roadmap page, **Build your roadmap** (or **Edit roadmap** later) to set your goal race, the races
+  and milestones on the way, a typical week and notes for the coach. Already have a roadmap file in Halo Labs' format
+  ([docs/roadmap-template.json](docs/roadmap-template.json))? Upload it instead; you can still edit it in the app.
+- **Coach**: Settings → Coach: keep the built-in **Coach** or **write your own** personality. Tell it things to
   remember ("remember I'm allergic to shellfish"); they show up under Settings → Coach memory.
 
 ## 4. Using it on your iPhone (optional)

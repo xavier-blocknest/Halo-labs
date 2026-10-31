@@ -28,7 +28,20 @@
 .rme-chip { font: inherit; font-size: 12px; cursor: pointer; border-radius: 999px; padding: 4px 10px; border: 1px dashed oklch(1 0 0 / 0.2); background: transparent; color: oklch(0.74 0.015 255); }
 .rme-err { font-size: 12.5px; color: oklch(0.7 0.18 25); }
 .rme-foot { display: flex; justify-content: flex-end; gap: 12px; align-items: center; }
+/* Roadmap planner (RoadmapPlanner.tsx): same sheet, in sections. */
+.rmp-sec { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid oklch(1 0 0 / 0.07); }
+.rmp-h { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 14px; font-weight: 500; }
+.rmp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rmp-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rmp-wide { grid-column: 1 / -1; }
+.rmp-f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: oklch(0.58 0.015 255); min-width: 0; }
+.rmp-f textarea { resize: vertical; }
+.rmp-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) auto; }
+.rmp-week { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 @media (max-width: 640px) {
+  .rmp-grid { grid-template-columns: 1fr; }
+  .rmp-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rmp-row { grid-template-columns: 1fr; }
   .rme-back { padding: 0; }
   .rme { border-radius: 0; min-height: 100%; }
   .rme-row { grid-template-columns: 1fr; gap: 8px; }

@@ -1543,9 +1543,9 @@ function roadmapData() {
         kpis: [{ k: 'Days', v: String(g.daysTo) }, ...p.legs.map(l => ({ k: l.k, v: `${l.goal.toLocaleString()} ${l.unit}` }))],
         rows: [
           ...(p.swimming.current ? [{ k: 'Swim', v: `${p.swimming.current.focus} now (${p.swimming.current.period})${p.swimming.coach ? ', with your coach' : ''}.`, c: A }] : []),
-          { k: 'Bike', v: `${p.cycling.priority}. ${p.cycling.preferred}.`, c: A },
-          { k: 'Run', v: `Progression ${p.running.ladder.map(l => l.k).join(' → ')}; comfortable now at ${p.running.comfortableMi} mi.`, c: A },
-          { k: 'Recovery', v: p.recovery.join(', ') + '.', c: A },
+          ...(p.cycling.priority ? [{ k: 'Bike', v: [p.cycling.priority, p.cycling.preferred].filter(Boolean).join('. ') + '.', c: A }] : []),
+          ...(p.running.ladder.length ? [{ k: 'Run', v: `Progression ${p.running.ladder.map(l => l.k).join(' → ')}` + (p.running.comfortableMi ? `; comfortable now at ${p.running.comfortableMi} mi.` : '.'), c: A }] : []),
+          ...(p.recovery.length ? [{ k: 'Recovery', v: p.recovery.join(', ') + '.', c: A }] : []),
         ] }
     : !isRun(R0) ? { title: `${R0.name} · ${fmtDay(R0.start, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}`, sub: R0.targetTime ? `Goal ${R0.targetTime}.` : '',
         kpis: [{ k: 'Status', v: rmSt(R0.status)[0] }, { k: 'Days', v: String(R0.daysTo) }, { k: 'Weeks', v: String(Math.ceil(R0.daysTo / 7)) }, ...(g.date ? [{ k: 'Before ' + g.event.replace('IRONMAN ', ''), v: Math.round(daysBetween(g.date, R0.start) / 7) + ' wks' }] : [])],
@@ -1556,6 +1556,7 @@ function roadmapData() {
 
   return {
     rmEmpty: false,
+    hasBike: !!p.cycling.priority || !!p.cycling.preferred || p.cycling.equipment.length > 0, hasLadder: p.running.ladder.length > 0, hasProgress: p.legs.length > 0, hasPrep: races.length > 0,
     rmEditOn: !!this.state.rmEdit, rmEditOpen: () => this.setState({ rmEdit: true }), rmEditClose: () => this.setState({ rmEdit: false }),
     upcoming: UP.map(u => u), upTf: 'translateX(-' + (ui * 100) + '%)',
     upPrev: () => this.setState(s => ({ up: ((s.up ?? 0) - 1 + nU) % nU })), upNext: () => this.setState(s => ({ up: ((s.up ?? 0) + 1) % nU })),

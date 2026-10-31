@@ -40,7 +40,7 @@ const HAVE: { id: HaveId; name: string; what: string; accept: string; how: React
   { id: 'history', name: 'WHOOP or Strava history', what: 'Years of history in one go', accept: '.csv,.zip',
     how: <>Connecting WHOOP or Strava already pulls history, but a full export goes back further. <b>WHOOP</b>: request a data export in the WHOOP app (CSV files). <b>Strava</b>: strava.com → Settings → My Account → download your data (<code>activities.csv</code>).</> },
   { id: 'roadmap', name: 'A race plan', what: 'Goal race, milestones, weekly schedule', accept: '.json',
-    how: <>A roadmap file in Halo Labs' format: start from <code>docs/roadmap-template.json</code> in your Halo Labs folder. No file yet? Skip it and ask your coach to help you build one later.</> },
+    how: <>A roadmap file in Halo Labs' format (<code>docs/roadmap-template.json</code>). No file? Skip this: you can build your roadmap on the Roadmap page with <b>Build your roadmap</b>.</> },
 ]
 
 async function getSettings(): Promise<Setting[]> { return (await (await fetch('/api/settings')).json()).settings }
@@ -453,23 +453,20 @@ function More({ have, onChange, onUploaded, onNext, onBack }: { have: HaveId[]; 
 }
 
 function CoachStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
-  const [id, setId] = useState<string>(() => { try { return localStorage.getItem('im4-coach') ?? 'coach' } catch { return 'coach' } })
+  const c = BUILT_IN[0]
   // Saved to the server too: during setup the browser↔server state sync isn't running yet.
-  const pick = (c: string) => { setId(c); setCoach(c as 'coach' | 'tough'); void fetch('/api/state/im4-coach', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: c }) }
+  const pick = () => { setCoach('coach'); void fetch('/api/state/im4-coach', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'coach' }) }
   return (
-    <Step eyebrow="Your coach" title="How should your coach talk to you?"
-      lead="Same data, same rules, different personality. You can switch any time, or write your own coach in Settings."
-      foot={<Nav onBack={onBack} onNext={onNext} />}>
-      <div className="onb-tiles two">
-        {BUILT_IN.map(c => (
-          <button key={c.id} className={`onb-tile${id === c.id ? ' on' : ''}`} onClick={() => pick(c.id)} aria-pressed={id === c.id}>
-            <span className="onb-tile-icon">{c.id === 'tough' ? <IconFlame /> : <IconSpark />}</span>
-            <span className="onb-tile-name">{c.name}</span>
-            <span className="onb-tile-what">{c.blurb}</span>
-            <span className="onb-quote">{c.id === 'tough' ? '“Short night and you want a hard day? No. Easy spin, then bed early. Tomorrow you earn it.”' : '“Recovery is low, so today stays easy: Zone 2, nothing more. Tomorrow we push.”'}</span>
-            <span className="onb-tick" aria-hidden>✓</span>
-          </button>
-        ))}
+    <Step eyebrow="Your coach" title="Meet your coach"
+      lead="It reads all your data, knows your next race and talks to you in chat and by voice. Want a different personality? Write your own coach in Settings → Coach."
+      foot={<Nav onBack={onBack} onNext={() => { pick(); onNext() }} />}>
+      <div className="onb-tiles">
+        <div className="onb-tile on">
+          <span className="onb-tile-icon"><IconSpark /></span>
+          <span className="onb-tile-name">{c.name}</span>
+          <span className="onb-tile-what">{c.blurb}</span>
+          <span className="onb-quote">“Recovery is low, so today stays easy: Zone 2, nothing more. Tomorrow we push.”</span>
+        </div>
       </div>
     </Step>
   )
@@ -560,4 +557,3 @@ function IconHeart() { return svg(<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 
 function IconUp() { return svg(<><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></>) }
 function IconCheck() { return svg(<><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.5 2.5L16 9.5" /></>) }
 function IconEye() { return svg(<><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>) }
-function IconFlame() { return svg(<path d="M12 21c-3.5 0-6-2.4-6-5.6 0-3.8 3.5-5.4 3.5-9.4 2.8 1.6 4 3.6 4 5.6 1-.6 1.6-1.6 1.8-2.8 1.6 1.5 2.7 3.6 2.7 6.4 0 3.3-2.5 5.8-6 5.8z" />) }

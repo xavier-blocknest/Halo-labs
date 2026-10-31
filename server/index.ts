@@ -15,7 +15,8 @@ import { backfillEmbeddings, embedStatus, forgetHistory, historyStats, initMemor
 import { checkUploadToken, createUploadToken, listUploadTokens, revokeUploadToken, throttled } from './uploadTokens.ts'
 import { verifyKey, deleteSource, getSecret, setSecret, upsertRecords, getState, lastError, lastRuns, openDb, recentImports, setState, sourceSummary } from './db.ts'
 import { dashboard } from './dashboard/index.ts'
-import { STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
+import { parseWhen, roadmapDoc, roadmapEdits, SCHEDULE_DAYS, STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
+import { today } from './dashboard/time.ts'
 import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry } from './journal.ts'
 import { SAVE_WEEK_PLAN_TOOL, saveWeekPlan } from './weekPlan.ts'
 import { importUpload, initImports, scanInbox, startInboxWatcher } from './import/index.ts'
@@ -323,6 +324,53 @@ async function saveRoadmapEdits(req: IncomingMessage, res: ServerResponse) {
   send(res, 200, { ok: true })
 }
 
+/** PUT /api/roadmap/doc: the whole roadmap from the planner. Fields the planner edits are validated; anything else the
+ *  athlete's uploaded file had (swim phases, bike setup…) comes back untouched. Saved as the newest roadmap, with the
+ *  in-app edits folded in, so the edit overlay starts empty again (open-question answers and 75 Hard stay). */
+async function saveRoadmapDoc(req: IncomingMessage, res: ServerResponse) {
+  const doc = JSON.parse(await readBody(req)) as Record<string, any>
+  const day = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s))
+  const text = (s: unknown, max: number) => typeof s === 'string' && s.trim().length > 0 && s.length <= max
+  const opt = (s: unknown, max: number) => s == null || s === '' || text(s, max)
+  const list = (xs: unknown, n: number, max: number) => Array.isArray(xs) && xs.length <= n && xs.every(x => text(x, max))
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw new AuthError('Bad roadmap.')
+  if (!opt(doc.title, 80)) throw new AuthError('The title is too long.')
+  const g = doc.primary_goal
+  if (!g || !text(g.event, 120)) throw new AuthError('Give your main goal a name.')
+  if (!(g.date == null || g.date === '' || day(g.date))) throw new AuthError('The goal date must look like 2027-06-01.')
+  if (!opt(g.location, 120) || !opt(g.objective, 500)) throw new AuthError('The goal location or description is too long.')
+  if (!(g.registered_on == null || day(g.registered_on))) throw new AuthError('Registration date must look like 2026-10-29.')
+  if (g.distances != null && (typeof g.distances !== 'object' || !Object.values(g.distances).every(v => typeof v === 'number' && v > 0 && v < 1000))) throw new AuthError('Race distances must be positive numbers.')
+  const ms = doc.milestones
+  if (!Array.isArray(ms) || ms.length > 150) throw new AuthError('Too many milestones.')
+  const names = new Set<string>()
+  for (const m of ms) {
+    if (!m || !text(m.name, 120)) throw new AuthError('Every race or milestone needs a name.')
+    if (names.has(m.name.trim())) throw new AuthError(`"${m.name}" is on the roadmap twice.`)
+    names.add(m.name.trim())
+    if (!(m.date == null || day(m.date))) throw new AuthError(`"${m.name}": dates must look like 2027-03-07.`)
+    if (!opt(m.date_range, 60)) throw new AuthError(`"${m.name}": the "when" text is too long.`)
+    if (!m.date && !m.date_range) throw new AuthError(`"${m.name}" needs a date, or a "when" like "spring 2027".`)
+    if (!STATUSES.includes(m.status) && !text(m.status, 30)) throw new AuthError(`"${m.name}": unknown status.`) // a file's own status words are kept
+    if (!opt(m.target_time, 20)) throw new AuthError(`"${m.name}": the goal time is too long.`)
+    if (!(m.registered_on == null || day(m.registered_on))) throw new AuthError(`"${m.name}": bad registration date.`)
+    if (m.race != null && typeof m.race !== 'boolean') throw new AuthError(`"${m.name}": bad race flag.`)
+  }
+  const sch = doc.current_training_schedule ?? {}
+  if (typeof sch !== 'object' || !SCHEDULE_DAYS.every(k => sch[k] == null || list(sch[k], 10, 120)) || !opt(sch.note, 300)) throw new AuthError('Each day can have up to 10 sessions of up to 120 characters.')
+  for (const k of ['planning_principles', 'recovery_priorities']) if (doc[k] != null && !list(doc[k], 30, 200)) throw new AuthError('Keep notes to 30 lines of up to 200 characters.')
+
+  // Date order, undated "when" text by its start; the original order breaks ties.
+  const at = (m: Record<string, any>) => parseWhen(m.date ?? m.date_range)?.start ?? '9999'
+  doc.milestones = ms.map((m, i) => ({ m, i })).sort((a, b) => at(a.m).localeCompare(at(b.m)) || a.i - b.i).map(x => x.m)
+  // Saved as the newest roadmap: today, or the uploaded file's own date when that is later (same id: replaces it).
+  const newest = roadmapDoc()?.day ?? '', d = newest > today() ? newest : today()
+  upsertRecords([{ source: 'plan', kind: 'roadmap', id: d, day: d, data: { ...doc, as_of_date: d } }])
+  const e = roadmapEdits()
+  upsertRecords([{ source: 'plan', kind: 'roadmap-edits', id: 'current', day: null, data: { edits: {}, added: [], answers: e.answers, hard75: e.hard75 } }])
+  send(res, 200, { ok: true })
+}
+
 async function hookImport(req: IncomingMessage, res: ServerResponse) {
   const text = (status: number, msg: string) => { res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(msg) }
   if (req.method !== 'POST') return text(405, 'Send the file with POST.')
@@ -522,6 +570,8 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     const ut = url.pathname.match(/^\/api\/upload-tokens\/([0-9a-f]{12})$/)
     if (ut && req.method === 'DELETE') return send(res, revokeUploadToken(ut[1]) ? 200 : 404, { ok: true })
     if (url.pathname === '/api/roadmap/edits' && req.method === 'PUT') return await saveRoadmapEdits(req, res)
+    if (url.pathname === '/api/roadmap/doc' && req.method === 'GET') return send(res, 200, { doc: roadmapDoc()?.doc ?? null })
+    if (url.pathname === '/api/roadmap/doc' && req.method === 'PUT') return await saveRoadmapDoc(req, res)
     const wp = /^\/api\/week-plan\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname)
     if (wp && req.method === 'PUT') {
       try { return send(res, 200, { plan: saveWeekPlan({ ...JSON.parse(await readBody(req)), week_start: wp[1] }, 'you') }) }

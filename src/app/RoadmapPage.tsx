@@ -1,5 +1,7 @@
 // Roadmap page: the athlete's season plan (plan/roadmap) against what the data shows. Everything comes from D.plan
 // and D.training; nothing here is hard-coded.
+import { useState } from 'react'
+import { RoadmapPlanner } from './RoadmapPlanner'
 import './roadmap.css'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -58,7 +60,14 @@ function Timeline({ p, today }: { p: D; today: string }) {
 
 export function RoadmapPage({ D }: { D: D }) {
   const p = D.plan, t = D.training
-  if (!p) return <div className="rm"><section className="rm-card wide"><p className="rm-empty">No roadmap yet. Upload your roadmap file on Settings.</p></section></div>
+  const [planning, setPlanning] = useState(false)
+  if (!p) return (
+    <div className="rm"><section className="rm-card wide">
+      <p className="rm-empty">No roadmap yet. Plan your goal race, the races on the way and a typical week, and the coach plans around it.</p>
+      <p><button className="rme-btn rme-primary" onClick={() => setPlanning(true)}>Build your roadmap</button></p>
+      <p className="rm-note">Already have a roadmap file in Halo Labs' format? Upload it in Settings → Upload data instead.</p>
+      {planning && <RoadmapPlanner today={D.today} onClose={() => setPlanning(false)} />}
+    </section></div>)
   const g = p.goal, longestRun = t?.longest?.run?.v ?? 0
   const SPORT: Record<string, string> = { run: 'Run', swim: 'Swim', ride: 'Ride', strength: 'Lift', walk: 'Walk', other: 'Activity' }
   return (
