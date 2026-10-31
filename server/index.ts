@@ -20,7 +20,7 @@ import { today } from './dashboard/time.ts'
 import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry } from './journal.ts'
 import { SAVE_WEEK_PLAN_TOOL, saveWeekPlan } from './weekPlan.ts'
 import { importUpload, initImports, scanInbox, startInboxWatcher } from './import/index.ts'
-import { authorizeUrl, disconnect, handleCallback, isConfigured, isConnected, redirectUri, type Provider } from './oauth.ts'
+import { authorizeUrl, disconnect, handleCallback, isConfigured, isConnected, onLocalhost, publicUrl, redirectUri, type Provider } from './oauth.ts'
 import { isSyncing, startScheduler, syncIfStale, syncNow } from './sync.ts'
 import { listSettings, onSettingsChange, saveSettings, setting } from './settings.ts'
 import { applyUpdate, checkForUpdate, startUpdateChecks, updateStatus } from './update.ts'
@@ -519,6 +519,10 @@ async function authRoutes(req: IncomingMessage, res: ServerResponse, url: URL) {
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? '/', 'http://x')
+    // Pages opened at 127.0.0.1 (the WHOOP callback) move to localhost: passkeys and the session cookie only work there.
+    // The health check and the iPhone upload hook keep working at 127.0.0.1.
+    if (/^127\.0\.0\.1(:\d+)?$/.test(req.headers.host ?? '') && onLocalhost() && !url.pathname.startsWith('/api/') && !url.pathname.startsWith('/hooks/'))
+      return redirect(res, publicUrl() + url.pathname + url.search)
     if (url.pathname.startsWith('/auth/')) {
       if ((await authRoutes(req, res, url)) !== false) return
       return send(res, 404, { error: 'not found' })

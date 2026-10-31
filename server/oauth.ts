@@ -36,7 +36,10 @@ const refreshing = new Map<Provider, Promise<Tokens>>()
 
 /** The address the browser uses: http://localhost:8787 on the Mac, or a Tailscale HTTPS name (PUBLIC_URL in .env). */
 export const publicUrl = () => (process.env.PUBLIC_URL || 'http://localhost:8787').replace(/\/$/, '')
-export const redirectUri = (p: Provider) => `${publicUrl()}/oauth/${p}/callback`
+// On the Mac's own address, WHOOP gets http://127.0.0.1 instead of http://localhost (it may refuse "localhost"); the
+// server forwards that callback to localhost, where the session cookie and passkeys live (server/index.ts).
+export const onLocalhost = () => /^http:\/\/localhost(:\d+)?$/.test(publicUrl())
+export const redirectUri = (p: Provider) => `${p === 'whoop' && onLocalhost() ? publicUrl().replace('//localhost', '//127.0.0.1') : publicUrl()}/oauth/${p}/callback`
 
 function creds(p: Provider) {
   const id = setting(p === 'whoop' ? 'WHOOP_CLIENT_ID' : 'STRAVA_CLIENT_ID'), secret = setting(p === 'whoop' ? 'WHOOP_CLIENT_SECRET' : 'STRAVA_CLIENT_SECRET')

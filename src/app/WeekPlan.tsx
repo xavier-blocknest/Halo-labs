@@ -5,6 +5,7 @@ import { Fragment, useState } from 'react'
 
 const T1 = 'oklch(0.96 0.005 250)', T2 = 'oklch(0.74 0.015 255)', T3 = 'oklch(0.58 0.015 255)', A = 'oklch(0.82 0.13 210)', LINE = 'oklch(1 0 0 / 0.07)'
 const FONT = "'IBM Plex Sans',system-ui,sans-serif"
+const TIP_KEY = 'halo-week-tip-hidden' // the coach-chat note, dismissed on this device
 const SPORTS: [string, string][] = [['strength', 'Lift'], ['run', 'Run'], ['swim', 'Swim'], ['ride', 'Ride'], ['walk', 'Walk'], ['mobility', 'Mobility'], ['rest', 'Rest'], ['other', 'Other']]
 const btn = { cursor: 'pointer', fontFamily: FONT, fontSize: '12px', padding: '5px 10px', borderRadius: '8px', border: `1px solid ${LINE}`, background: 'transparent', color: T2 } as const
 const field = { fontFamily: FONT, fontSize: '13px', color: T1, background: 'oklch(1 0 0 / 0.04)', border: `1px solid ${LINE}`, borderRadius: '8px', padding: '7px 9px', outline: 'none', minWidth: 0 } as const
@@ -58,7 +59,9 @@ function DayEditor({ dy, save, done }: { dy: any; save: (day: string, s: Session
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function WeekPlan({ wk, days }: { wk: any; days: any[] }) {
   const [editing, setEditing] = useState<string | null>(null)
+  const [tip, setTip] = useState(() => { try { return !localStorage.getItem(TIP_KEY) } catch { return true } })
   if (!wk) return null
+  const hideTip = () => { try { localStorage.setItem(TIP_KEY, '1') } catch { /* private mode */ } setTip(false) }
   const next = !days[0]?.showActual
   return (
     <section style={{ borderRadius: '18px', background: 'oklch(0.185 0.018 262 / 0.9)', border: `1px solid ${LINE}`, boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.04)', padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
@@ -74,6 +77,12 @@ export function WeekPlan({ wk, days }: { wk: any; days: any[] }) {
           ))}
         </div>
       </div>
+      {tip && (
+        <div role="note" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 8px 9px 14px', borderRadius: '12px', background: 'oklch(0.82 0.13 210 / 0.08)', border: '1px solid oklch(0.82 0.13 210 / 0.3)', fontSize: '13px', color: T2 }}>
+          <span style={{ flex: 1 }}>Your plan can be updated directly from the coach chat. Just ask, for example: “Move my long run to Sunday.”</span>
+          <button onClick={hideTip} aria-label="Dismiss" style={{ flex: 'none', width: '28px', height: '28px', border: 0, borderRadius: '8px', background: 'transparent', color: T2, fontSize: '20px', lineHeight: 1, cursor: 'pointer' }}>×</button>
+        </div>
+      )}
       {wk.empty ? <span style={{ fontSize: '12.5px', color: T3 }}>{wk.empty}</span> : null}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

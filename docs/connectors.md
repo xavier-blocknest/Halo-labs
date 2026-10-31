@@ -140,8 +140,9 @@ Base URL `https://www.strava.com/api/v3`. Pagination is `page` (default 1) and `
 
 **Redirect URLs.** Halo Labs shows the exact redirect URL for each service in Settings → Sources (from `PUBLIC_URL` in
 `.env`, default `http://localhost:8787`):
-- WHOOP: register the full URL, `http://localhost:8787/oauth/whoop/callback`. WHOOP's docs don't confirm that `http://localhost`
-  is accepted (**UNCONFIRMED**); if the dashboard refuses it, set up the Tailscale HTTPS address (README → Phone access)
+- WHOOP: register the full URL, `http://127.0.0.1:8787/oauth/whoop/callback`. On the default `PUBLIC_URL`, Halo Labs sends
+  WHOOP the `127.0.0.1` form (loopback IPs are more widely accepted than `localhost`) and forwards the callback to
+  `localhost`, where the session lives. WHOOP's docs don't confirm either is accepted (**UNCONFIRMED**); if the dashboard refuses it, set up the Tailscale HTTPS address (README → Phone access)
   and register `https://<your-mac>.<tailnet>.ts.net/oauth/whoop/callback` instead.
 - Strava: set the Authorization Callback Domain to `localhost` (officially whitelisted), or to your `*.ts.net` host name.
 If you change `PUBLIC_URL` later, update the redirect URL in both dashboards and reconnect.
