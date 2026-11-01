@@ -91,11 +91,11 @@ server/
 src/
   app/              React components: App (auth gate, onboarding gate, data loading), LockScreen, Onboarding (first-run
                     wizard; state in /api/onboarding), DataPage (Settings), ApiKeys,
-                    RecoveryKit, CoachPicker, CoachMemory, Uploader, RoadmapView, RoadmapPlanner (builds/edits the
+                    RecoveryKit, CoachPicker, CoachInstructions (standing instructions for every coach; im4-coachnotes), CoachMemory, Uploader, RoadmapView, RoadmapPlanner (builds/edits the
                     whole roadmap; /api/roadmap/doc), DeleteAll (Settings → Delete all data; POST /api/wipe), FuelView, JournalPage, CalendarPage (+ UpcomingCard on Overview: next 14 days), WeekPlan, …
   legacy/           logic.tsx (shell: nav, layout, boot sequence, chat UI; plain JS, @ts-nocheck),
                     builders.tsx (every page's view model + voice + coach prompts), View.tsx (page layout, reads only v.*)
-  coachPersona.ts   coach personalities (Coach, the athlete's own)
+  coachPersona.ts   coach personalities (Coach, the athlete's own) + the athlete's coach instructions (coachNotesPrompt)
   claude.ts voice.ts sync.ts   coach client, microphone capture, localStorage ↔ server sync for shared keys
   sampleMode.ts     sample mode flag + write guard
 docs/               importing.md (formats), connectors.md (WHOOP/Strava API notes), operations.md, roadmap-template.json

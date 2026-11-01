@@ -1,7 +1,7 @@
 // The prototype keeps everything in localStorage. Keys that describe the athlete's day (injuries,
 // diet log, coach history, ...) are mirrored to the server so every device sees the
 // same state. Per-device preferences (last page, sound, voice) stay local.
-const SHARED = new Set(['im4-al', 'im4-diet', 'im4-pchk', 'im4-wchk', 'im4-inj', 'im4-chat', 'im4-brief', 'im4-supps', 'im4-rwgoal', 'im4-coach'])
+const SHARED = new Set(['im4-al', 'im4-diet', 'im4-pchk', 'im4-wchk', 'im4-inj', 'im4-chat', 'im4-brief', 'im4-supps', 'im4-rwgoal', 'im4-coach', 'im4-coachnotes'])
 
 function push(key: string, value: string | null) {
   const init: RequestInit = value === null

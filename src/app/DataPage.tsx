@@ -3,6 +3,7 @@ import { getSources, syncNow, type Connector, type Sources } from './api'
 import { ActivitySources } from './ActivitySources'
 import { ApiKeys } from './ApiKeys'
 import { Backups } from './Backups'
+import { CoachInstructions } from './CoachInstructions'
 import { CoachMemory } from './CoachMemory'
 import { CoachPicker } from './CoachPicker'
 import { FoldCard } from './Fold'
@@ -113,6 +114,7 @@ export function DataPage({ embedded = false }: { embedded?: boolean }) {
       <ApiKeys />
       <RecoveryKit />
       <CoachPicker />
+      <CoachInstructions />
       <CoachMemory />
       <Notifications />
       <Backups />

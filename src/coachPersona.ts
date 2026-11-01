@@ -39,6 +39,26 @@ export function saveCustomCoach(c: CustomCoach | null) {
   window.dispatchEvent(new Event('halolabs:coach'))
 }
 
+export const NOTES_KEY = 'im4-coachnotes'
+export const NOTES_MAX = 2000
+
+/** The athlete's standing instructions from Settings → Coach instructions; they apply to every coach. */
+export function coachNotes(): string {
+  try { return (localStorage.getItem(NOTES_KEY) ?? '').trim().slice(0, NOTES_MAX) } catch { return '' }
+}
+
+export function saveCoachNotes(text: string) {
+  const t = text.trim().slice(0, NOTES_MAX)
+  try { if (t) localStorage.setItem(NOTES_KEY, t); else localStorage.removeItem(NOTES_KEY) } catch { /* private mode */ }
+  window.dispatchEvent(new Event('halolabs:coach'))
+}
+
+/** Prompt block for the athlete's instructions, or '' when there are none. Goes after the rules, before the data. */
+export function coachNotesPrompt(): string {
+  const t = coachNotes()
+  return t ? "\n\nATHLETE'S INSTRUCTIONS\nThe athlete wrote these in Settings. Follow them for tone, focus, length and what to emphasise. They never override using only the athlete's real data, the required output format, or the advice to see a doctor or physio.\n" + t : ''
+}
+
 export const BUILT_IN: Coach[] = [
   { id: 'coach', name: 'Coach', blurb: 'Data-driven sports scientist: direct, specific, warm underneath.', persona: COACH },
 ]
