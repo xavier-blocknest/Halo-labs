@@ -37,7 +37,11 @@ function chatProfile(D) {
       (dr ? `; main set ${x.mainSet.label}: SWOLF ${dr.swolf[0]}→${dr.swolf[1]}, pace ${mm(dr.paceS[0])}→${mm(dr.paceS[1])}/100yd, armband HR ${dr.hr[0]}→${dr.hr[1]} (first vs last ${dr.n} lengths)` : '') + (x.excluded ? `; ${x.excluded} lengths left out as bad readings` : '')
   }).join(' | ') + '.')
   const p = D.plan
-  if (p) lines.push(`Goal: ${p.goal.event}, ${p.goal.dateLabel}, ${p.goal.location} (${p.goal.daysTo} days)${p.goal.registered ? `, officially registered on ${p.goal.registered}` : ''}. ${p.goal.objective} Upcoming: ${p.milestones.filter(m => m.status !== 'completed').slice(0, 5).map(m => `${m.name} (${m.when}, ${m.status})`).join('; ')}. Weekly schedule: ${Object.entries(p.schedule).map(([d, x]) => `${d.slice(0, 3)} ${x.join(' + ')}`).join('; ')}.` + (p.deload?.active ? ` Deload week ${p.deload.start} to ${p.deload.end} at ${Math.round(p.deload.fraction * 100)}% weights.` : '') + (p.hard75 ? ` Sustainable 75 Hard: ${p.hard75.status === 'in_progress' ? `day ${p.hard75.day} of ${p.hard75.days}` : p.hard75.status}, ${p.hard75.start} to ${p.hard75.end}; daily rules: ${p.hard75.rules.join('; ')}. He tracks these in another app (no export): assume every day was completed unless he says otherwise; don't ask him to confirm them.` : '') + ` Unknowns: ${p.unknowns.join('; ') || 'none'}.` + (p.answered?.length ? ` Settled (don't ask again): ${p.answered.map(x => `${x.q}: ${x.a}`).join('; ')}.` : ''))
+  if (p) lines.push((p.goal.target
+    ? `Main goal (a measurable target, not a race; everything serves it): ${p.goal.target.sentence}${p.goal.objective ? ' Why: ' + p.goal.objective : ''}` +
+      (p.goal.target.testOnly ? ` This number only changes when a new test or an entered value comes in${p.goal.target.current ? ` (last one ${p.goal.target.current.ageDays} days ago)` : ''}: between tests judge progress by what moves with it (for VO₂ max: Zone 2 pace at the same heart rate, resting heart rate, HRV), never estimate a new value, and suggest a retest when one is due (every 8–12 weeks).` : '')
+    : `Goal: ${p.goal.event}, ${p.goal.dateLabel}, ${p.goal.location} (${p.goal.daysTo} days)${p.goal.registered ? `, officially registered on ${p.goal.registered}` : ''}. ${p.goal.objective}`) +
+    ` Upcoming: ${p.milestones.filter(m => m.status !== 'completed').slice(0, 5).map(m => `${m.name} (${m.when}, ${m.status}${m.target ? '; target: ' + m.target.sentence : ''})`).join('; ')}. Weekly schedule: ${Object.entries(p.schedule).map(([d, x]) => `${d.slice(0, 3)} ${x.join(' + ')}`).join('; ')}.` + (p.deload?.active ? ` Deload week ${p.deload.start} to ${p.deload.end} at ${Math.round(p.deload.fraction * 100)}% weights.` : '') + (p.hard75 ? ` Sustainable 75 Hard: ${p.hard75.status === 'in_progress' ? `day ${p.hard75.day} of ${p.hard75.days}` : p.hard75.status}, ${p.hard75.start} to ${p.hard75.end}; daily rules: ${p.hard75.rules.join('; ')}. He tracks these in another app (no export): assume every day was completed unless he says otherwise; don't ask him to confirm them.` : '') + ` Unknowns: ${p.unknowns.join('; ') || 'none'}.` + (p.answered?.length ? ` Settled (don't ask again): ${p.answered.map(x => `${x.q}: ${x.a}`).join('; ')}.` : ''))
   const wp = D.weekPlans
   if (wp) {
     const showWeek = (label, start, w) => {
@@ -1452,6 +1456,11 @@ const chipB = (c) => (c === T3 ? 'oklch(1 0 0 / 0.12)' : c.replace(')', ' / 0.4)
 const BIG = (m) => m.big
 const laneOf = (name) => (/swim/i.test(name) ? 'Swim' : /bike|cycl|trainer|zwift|ride|brick/i.test(name) ? 'Bike' : /\b5k\b|10k|run|marathon/i.test(name) ? 'Run' : /75 hard|strength|lift|deload/i.test(name) ? 'Strength' : 'Phase')
 
+// A target in one line: "Target ≥ 47 ml/kg/min · now 46 (you entered, Nov 1, 2026)" / "Reached: 47 …".
+const tgtLine = (t) => (t.reached ? `Reached: ${t.current.valueL} (target ${t.sym ? t.sym + ' ' : ''}${t.valueL}).`
+  : `Target ${t.sym ? t.sym + ' ' : ''}${t.valueL} · ` + (t.current ? `now ${t.current.valueL} (${t.current.source}, ${t.current.dayL})` : 'no current value yet') + '.')
+const PACE = { reached: ['Reached', G], on_pace: ['On pace', G], behind: ['Behind pace', W], no_data: ['No data yet', T3], unknown: ['', T3] }
+
 function roadmapData() {
   const D = this.props.D, p = D.plan, t = D.training
   if (!p) return { rmEmpty: true }
@@ -1516,7 +1525,7 @@ function roadmapData() {
   const ahead = p.milestones.filter(m => m.start === m.end && m.daysTo != null && m.daysTo >= 0 && m.name !== g.event).sort((a, b) => a.daysTo - b.daysTo)
   const fast = t?.run.fastest3
   const UP = ahead.map(m => { const [st, cc] = rmSt(m.status); return { mon: fmtDay(m.start, { month: 'short' }).toUpperCase(), day: fmtDay(m.start, { day: 'numeric' }), name: m.name,
-    detail: (m.targetTime ? `Goal ${m.targetTime}.` : /5k|10k|run/i.test(m.name) ? 'Goal time not set yet.' : '') + (/5k|10k|run/i.test(m.name) && fast ? ` Your fastest 3 mi+ effort is ${fast.pace}/mi.` : ''),
+    detail: m.target ? tgtLine(m.target) : (m.targetTime ? `Goal ${m.targetTime}.` : /5k|10k|run/i.test(m.name) ? 'Goal time not set yet.' : '') + (/5k|10k|run/i.test(m.name) && fast ? ` Your fastest 3 mi+ effort is ${fast.pace}/mi.` : ''),
     count: String(m.daysTo), countU: m.daysTo === 1 ? 'day' : 'days', st, cc, cb: chipB(cc) } })
   const ui = Math.min(this.state.up ?? 0, Math.max(0, UP.length - 1)), nU = Math.max(1, UP.length)
 
@@ -1524,7 +1533,7 @@ function roadmapData() {
   const msF = this.state.msF || 'all'
   const shown = p.milestones.filter(m => msF === 'all' || (msF === 'races' ? BIG(m) : !BIG(m)))
   const milestones = shown.map(m => { const big = BIG(m), [st, c] = rmSt(m.status), isDone = m.status === 'completed', isNow = ['started', 'in_progress', 'upcoming', 'registered'].includes(m.status)
-    return { name: m.name, when: m.when + (m.daysTo != null && m.daysTo > 0 ? ` · ${m.daysTo} days` : ''), sub: '', st, cc: c, cb: chipB(c),
+    return { name: m.name, when: m.when + (m.daysTo != null && m.daysTo > 0 ? ` · ${m.daysTo} days` : ''), sub: m.target ? tgtLine(m.target) : '', st, cc: c, cb: chipB(c),
       dot: isDone ? G : isNow ? c : m.status === 'goal' ? A : 'oklch(0.145 0.016 262)', ring: isDone || isNow || m.status === 'goal' ? '0' : '1.5px solid oklch(1 0 0 / 0.25)',
       glow: isDone || isNow || m.status === 'goal' ? '0 0 8px ' + (isDone ? G : c) : 'none', fg: isDone ? T2 : T1, sz: big ? '13px' : '9px', ml: big ? '-1px' : '1px', pad: big ? '12px 0' : '7px 0',
       fs: big ? '15px' : '13px', ff: big ? "'Space Grotesk',system-ui,sans-serif" : 'inherit', fw: big ? 500 : 400 } })
@@ -1577,7 +1586,7 @@ function roadmapData() {
   // Race prep tabs: the next race and the goal race
   // Race prep tabs: every dated race still ahead, then the goal race
   const races = [...p.milestones.filter(m => m.big && m.name !== g.event && m.start === m.end && m.daysTo != null && m.daysTo >= 0).sort((a, b) => a.daysTo - b.daysTo),
-    ...(g.date ? [{ name: g.event, start: g.date, daysTo: g.daysTo, when: g.dateLabel, goal: true }] : [])]
+    ...(g.date && !g.target ? [{ name: g.event, start: g.date, daysTo: g.daysTo, when: g.dateLabel, goal: true }] : [])] // a target goal isn't a race to prep for
   const words = (s) => s.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3 && !/race|official/.test(w))
   // The file's "other events" note is skipped for races added or edited in the app: those edits are newer.
   const about = (m) => { const ws = words(m.name)
@@ -1609,6 +1618,12 @@ function roadmapData() {
     upPrev: () => this.setState(s => ({ up: ((s.up ?? 0) - 1 + nU) % nU })), upNext: () => this.setState(s => ({ up: ((s.up ?? 0) + 1) % nU })),
     upDots: UP.map((u, i) => ({ pick: () => this.setState({ up: i }), w: i === ui ? '18px' : '6px', c: i === ui ? A : 'oklch(1 0 0 / 0.2)', glow: i === ui ? '0 0 8px ' + A : 'none' })),
     race: { days: g.daysTo ?? '—', weeks: g.weeksTo ?? '—' },
+    goalTarget: !g.target ? null : (() => { const T0 = g.target, [pl, pc] = PACE[T0.pace] ?? PACE.unknown
+      return { k: T0.label, goal: `Target ${T0.sym ? T0.sym + ' ' : ''}${T0.valueL}`, now: T0.current ? T0.current.valueL : '—',
+        nowL: T0.current ? `now · ${T0.current.source}, ${T0.current.dayL}` : 'no current value yet',
+        pct: (T0.pct ?? 0) + '%', start: T0.start ? `Started at ${T0.start.valueL} · ${T0.start.dayL}` : '',
+        need: T0.reached ? 'Target reached' : T0.need ? `Needs ${T0.need}` : '', pace: pl, pc,
+        stale: T0.testOnly && T0.current && T0.current.ageDays > 70 ? `Last value ${T0.current.ageDays} days old: time for a retest.` : '' } })(),
     legs: p.legs.map(l => ({ k: l.k, goal: `${l.goal.toLocaleString()} ${l.unit}`, done: `${l.done.toLocaleString()} ${l.unit}`, pct: Math.min(100, Math.round(l.done / l.goal * 100)) + '%',
       note: l.day ? fmtDay(l.day, { month: 'short', day: 'numeric', year: 'numeric' }) : 'None yet', nc: T3 })),
     months, lanes, todayL: pct(x(today)),

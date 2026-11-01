@@ -87,6 +87,8 @@ server/
   journal.ts calendar.ts (Calendar events + roadmap/protocol dates; PUT|DELETE /api/calendar/:id) weekPlan.ts backup.ts uploadTokens.ts
   push.ts           notifications (Web Push, node:crypto only, no npm package): today's call, calendar reminders, sync
                     problems; devices/keys/switches in secrets push-*; Settings → Notifications (src/app/Notifications.tsx, public/sw.js)
+  targets.ts        roadmap targets (goal or checkpoint = metric + value by a date): metrics, current values, entered
+                    values (plan/reading), progress; /api/targets, /api/targets/reading
   priorities.ts     coach's update_priorities tool: its own Overview priorities + edits/hides of the data-driven ones (plan/priority)
 src/
   app/              React components: App (auth gate, onboarding gate, data loading), LockScreen, Onboarding (first-run

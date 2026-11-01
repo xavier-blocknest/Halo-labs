@@ -63,7 +63,7 @@ export function RoadmapPage({ D }: { D: D }) {
   const [planning, setPlanning] = useState(false)
   if (!p) return (
     <div className="rm"><section className="rm-card wide">
-      <p className="rm-empty">No roadmap yet. Plan your goal race, the races on the way and a typical week, and the coach plans around it.</p>
+      <p className="rm-empty">No roadmap yet. Plan your goal (a race, or a target like VO₂ max 50 by June), the steps on the way and a typical week, and the coach plans around it.</p>
       <p><button className="rme-btn rme-primary" onClick={() => setPlanning(true)}>Build your roadmap</button></p>
       <p className="rm-note">Already have a roadmap file in Halo Labs' format? Upload it in Settings → Upload data instead.</p>
       {planning && <RoadmapPlanner today={D.today} onClose={() => setPlanning(false)} />}

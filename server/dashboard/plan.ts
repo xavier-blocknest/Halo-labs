@@ -1,6 +1,7 @@
 // The athlete's roadmap (plan/roadmap, newest as_of_date), interpreted for the pages: dates in plain language
 // ("late October–November 2026", "winter 2026–27") become date ranges so they can be placed on a timeline.
 import { readRecords } from '../db.ts'
+import { isMetric, targetStatus } from '../targets.ts'
 import { addDays, diffDays, medium, weekday } from './time.ts'
 
 type Doc = Record<string, any>
@@ -85,13 +86,17 @@ export function planSummary(today: string, longest: { swim?: { v: number; day: s
   if (!rec) return null
   const edits = roadmapEdits(), d = withEdits(rec.data, edits), g = d.primary_goal ?? {}, h75 = edits.hard75
   const raceDay = /^\d{4}-\d{2}-\d{2}$/.test(g.date ?? '') ? g.date : null
+  // A main goal is a race (the default) or a measurable target: kind 'target' with { metric, of, value, start }.
+  const target = g.kind === 'target' && isMetric(g.target?.metric) && typeof g.target.value === 'number' ? targetStatus(g.target, raceDay, today) : null
   const milestones = (d.milestones ?? []).map((x: Doc) => {
     const when = parseWhen(x.date ?? x.date_range)
     // A race: marked in the planner (race: true/false), else guessed from the name.
     const big = !!(x.date && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && (x.status === 'goal' || (x.race ?? /5k|10k|race|ironman|70\.3|marathon|spartan/i.test(x.name))))
     return { name: x.name as string, status: x.status as string, when: x.date_range ?? (when ? (when.start === when.end ? medium(when.start) : x.date) : x.date ?? ''), start: when?.start ?? null, end: when?.end ?? null, big,
       daysTo: when && when.start === when.end ? diffDays(when.start, today) : null, targetTime: x.target_time ?? null,
-      date: x.date ?? null, dateRange: x.date_range ?? null, registeredOn: x.registered_on ?? null, edited: !!x._edited, added: !!x._added }
+      date: x.date ?? null, dateRange: x.date_range ?? null, registeredOn: x.registered_on ?? null, edited: !!x._edited, added: !!x._added,
+      // A checkpoint can be a measurable target ("VO₂ max 47 by March") instead of a race or a step.
+      target: isMetric(x.target?.metric) && typeof x.target.value === 'number' ? targetStatus(x.target, when?.end ?? null, today) : null }
   })
   const dl = /(\d{4}-\d{2}-\d{2})\s*(?:to|–|-)\s*(\d{4}-\d{2}-\d{2})/.exec(d.deload?.date_range ?? '')
   const deload = dl ? { start: dl[1], end: dl[2], active: today >= dl[1] && today <= dl[2], fraction: d.deload?.planned_weight_fraction_of_normal ?? null, approach: d.deload?.approach ?? '' } : null
@@ -106,7 +111,7 @@ export function planSummary(today: string, longest: { swim?: { v: number; day: s
   ] : []
   return {
     asOf: rec.day, title: d.title ?? 'Roadmap', edits, hiddenNames: Object.entries(edits.edits).filter(([, v]) => v.hidden).map(([k]) => k),
-    goal: { event: g.event, registered: /^\d{4}-\d{2}-\d{2}$/.test(g.registered_on ?? '') ? g.registered_on : null, date: raceDay, dateLabel: raceDay ? medium(raceDay) : g.date, location: g.location, objective: g.objective, daysTo: raceDay ? diffDays(raceDay, today) : null, weeksTo: raceDay ? Math.ceil(diffDays(raceDay, today) / 7) : null },
+    goal: { kind: target ? 'target' : 'race', target, event: g.event, registered: /^\d{4}-\d{2}-\d{2}$/.test(g.registered_on ?? '') ? g.registered_on : null, date: raceDay, dateLabel: raceDay ? medium(raceDay) : g.date, location: g.location, objective: g.objective, daysTo: raceDay ? diffDays(raceDay, today) : null, weeksTo: raceDay ? Math.ceil(diffDays(raceDay, today) / 7) : null },
     legs, milestones, deload, schedule, weeklySessions: d.current_training_schedule?.weekly_sessions ?? null, scheduleNote: d.current_training_schedule?.note ?? '',
     todayPlan: schedule[SCHEDULE_DAYS[weekday(today)]] ?? [],
     running: { comfortableMi: d.running?.current_comfortable_distance_miles ?? null, days: d.running?.days ?? [], ladder, nextEvent: d.running?.next_event ?? null },

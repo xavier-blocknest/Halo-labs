@@ -18,6 +18,7 @@ import { dashboard } from './dashboard/index.ts'
 import { buildSessions, swimView, SOURCE_CHOICES, SOURCE_SPORTS, SOURCES_KEY, sourcePrefs, type SourcePrefs } from './dashboard/sessions.ts'
 import { parseWhen, roadmapDoc, roadmapEdits, SCHEDULE_DAYS, STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
 import { today } from './dashboard/time.ts'
+import { cleanTarget, current, def, isMetric, parseValue, saveReading, targetChoices } from './targets.ts'
 import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry, workoutsAround } from './journal.ts'
 import { deleteEvent, EVENT_ID, saveEvent } from './calendar.ts'
 import { SAVE_WEEK_PLAN_TOOL, saveWeekPlan } from './weekPlan.ts'
@@ -359,6 +360,17 @@ async function saveRoadmapDoc(req: IncomingMessage, res: ServerResponse) {
   if (!(g.date == null || g.date === '' || day(g.date))) throw new AuthError('The goal date must look like 2027-06-01.')
   if (!opt(g.location, 120) || !opt(g.objective, 500)) throw new AuthError('The goal location or description is too long.')
   if (!(g.registered_on == null || day(g.registered_on))) throw new AuthError('Registration date must look like 2026-10-29.')
+  // A measurable target (main goal kind 'target', or a checkpoint): a known metric, a positive value, a subject
+  // (exercise or lab marker) for the metrics that need one. Returns the cleaned target.
+  const target = (t: unknown, who: string) => { try { return cleanTarget(t, who) } catch (x) { throw new AuthError((x as Error).message) } }
+  if (g.kind != null && g.kind !== 'race' && g.kind !== 'target') throw new AuthError('The goal is a race or a target.')
+  if (g.kind === 'target') {
+    if (!day(g.date)) throw new AuthError('A target needs a date to reach it by.')
+    g.target = target(g.target, 'Main goal')
+    // Progress is measured from where he stood when the target was set (kept when the target is unchanged).
+    if (!g.target.start) { const c = current(g.target.metric, g.target.of, today()); g.target.start = c ? { value: c.value, day: c.day } : null }
+    delete g.distances; delete g.registered_on; delete g.location
+  } else delete g.target
   if (g.distances != null && (typeof g.distances !== 'object' || !Object.values(g.distances).every(v => typeof v === 'number' && v > 0 && v < 1000))) throw new AuthError('Race distances must be positive numbers.')
   const ms = doc.milestones
   if (!Array.isArray(ms) || ms.length > 150) throw new AuthError('Too many milestones.')
@@ -374,6 +386,7 @@ async function saveRoadmapDoc(req: IncomingMessage, res: ServerResponse) {
     if (!opt(m.target_time, 20)) throw new AuthError(`"${m.name}": the goal time is too long.`)
     if (!(m.registered_on == null || day(m.registered_on))) throw new AuthError(`"${m.name}": bad registration date.`)
     if (m.race != null && typeof m.race !== 'boolean') throw new AuthError(`"${m.name}": bad race flag.`)
+    if (m.target != null) { m.target = target(m.target, `"${m.name}"`); delete m.target.start; m.race = false; delete m.target_time }
   }
   const sch = doc.current_training_schedule ?? {}
   if (typeof sch !== 'object' || !SCHEDULE_DAYS.every(k => sch[k] == null || list(sch[k], 10, 120)) || !opt(sch.note, 300)) throw new AuthError('Each day can have up to 10 sessions of up to 120 characters.')
@@ -660,6 +673,18 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     if (url.pathname === '/api/wipe' && req.method === 'POST') return await wipeAll(req, res)
     if (url.pathname === '/api/roadmap/doc' && req.method === 'GET') return send(res, 200, { doc: roadmapDoc()?.doc ?? null })
     if (url.pathname === '/api/roadmap/doc' && req.method === 'PUT') return await saveRoadmapDoc(req, res)
+    // Roadmap targets: the metrics and his current values (for the planner), and a value he enters himself.
+    if (url.pathname === '/api/targets' && req.method === 'GET') return send(res, 200, targetChoices(today()))
+    if (url.pathname === '/api/targets/reading' && req.method === 'POST') {
+      const b = JSON.parse(await readBody(req)) as { metric?: unknown; of?: unknown; value?: unknown }
+      if (!isMetric(b.metric)) throw new AuthError('Pick what to measure.')
+      const of = typeof b.of === 'string' && b.of.trim() ? b.of.trim().slice(0, 80) : null
+      if (def(b.metric).of && !of) throw new AuthError('Say which exercise or lab marker.')
+      const v = parseValue(b.metric, b.value)
+      if (v == null) throw new AuthError("That value doesn't read as a number.")
+      saveReading(b.metric, of, v, today())
+      return send(res, 200, { ok: true })
+    }
     const wp = /^\/api\/week-plan\/(\d{4}-\d{2}-\d{2})$/.exec(url.pathname)
     if (wp && req.method === 'PUT') {
       try { return send(res, 200, { plan: saveWeekPlan({ ...JSON.parse(await readBody(req)), week_start: wp[1] }, 'you') }) }

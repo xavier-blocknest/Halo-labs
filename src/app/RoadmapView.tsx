@@ -143,6 +143,24 @@ export function RoadmapView({ v }: { v: any }) {
             {" "}
           </div>
           {" "}
+          {v.goalTarget && (
+            <div style={{ flex: '1 1 100%', borderRadius: '14px', border: '1px solid oklch(1 0 0 / 0.07)', background: 'oklch(1 0 0 / 0.025)', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '13px', color: 'oklch(0.74 0.015 255)' }}>{v.goalTarget.k}</span>
+                <span style={{ fontSize: '12px', color: 'oklch(0.58 0.015 255)', fontVariantNumeric: 'tabular-nums' }}>{v.goalTarget.goal}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '30px', fontFamily: "'Space Grotesk',system-ui,sans-serif", color: 'oklch(0.96 0.005 250)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{v.goalTarget.now}</span>
+                <span style={{ fontSize: '12px', color: 'oklch(0.58 0.015 255)' }}>{v.goalTarget.nowL}</span>
+                {v.goalTarget.pace && <span style={{ marginLeft: 'auto', fontSize: '11px', padding: '3px 9px', borderRadius: '999px', border: `1px solid ${v.goalTarget.pc}`, color: v.goalTarget.pc }}>{v.goalTarget.pace}</span>}
+              </div>
+              <div style={{ height: '4px', borderRadius: '2px', background: 'oklch(1 0 0 / 0.07)' }}>
+                <div style={{ height: '100%', width: v.goalTarget.pct, minWidth: '2%', borderRadius: '2px', background: 'oklch(0.82 0.13 210)', boxShadow: '0 0 10px oklch(0.82 0.13 210 / 0.5)' }} />
+              </div>
+              <span style={{ fontSize: '11.5px', color: 'oklch(0.58 0.015 255)' }}>{[v.goalTarget.start, v.goalTarget.need].filter(Boolean).join(' · ')}</span>
+              {v.goalTarget.stale && <span style={{ fontSize: '11.5px', color: 'oklch(0.82 0.14 80)' }}>{v.goalTarget.stale}</span>}
+            </div>
+          )}
           <div style={{"flex": "1 1 100%", "display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(min(100%,180px),1fr))", "gap": "10px"}}>
             {" "}
             {(v.legs || []).map((lg: any, _i1: number) => (

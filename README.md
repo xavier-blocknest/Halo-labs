@@ -67,7 +67,10 @@ coach read it. That's your call; the alternative is to leave Strava disconnected
 - **Settings → Upload data**: drag in exports or PDFs (or a zip of them). Files are recognized by their content.
   See [docs/importing.md](docs/importing.md) for every supported format.
 - **Roadmap**: on the Roadmap page, **Build your roadmap** (or **Edit roadmap** later) to set your goal race, the races
-  and milestones on the way, a typical week and notes for the coach. Already have a roadmap file in Halo Labs' format
+  and milestones on the way, a typical week and notes for the coach. The goal can also be a **target**: a number to
+  reach by a date (VO₂ max 50 by June, a 5K under 25:00, a lift, weight, body fat, resting heart rate, HRV or a lab value),
+  with target checkpoints on the way. Progress fills in from your data; when nothing has the number yet (say, no lab
+  VO₂ test), the planner asks for your current value. Already have a roadmap file in Halo Labs' format
   ([docs/roadmap-template.json](docs/roadmap-template.json))? Upload it instead; you can still edit it in the app.
 - **Activity sources**: Settings → Activity sources picks which app each kind of workout comes from (runs, swims,
   rides, strength). **Auto** uses Strava for runs, FORM goggles (else Strava) for swims, WHOOP for rides and FitnessAI

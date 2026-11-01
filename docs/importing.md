@@ -20,7 +20,7 @@ is then emptied.
 | Benchmark Body Metrics DEXA report (PDF) | `dexa/scan` |
 | VO₂ max test report (PDF) | `vo2/test` |
 | Nutrition protocol (Markdown `.md`: `# … Protocol` + `## Daily targets`, start date line like `Jan 5, 2027 · @Name`) | `plan/protocol` (Fuel page and coach) |
-| Fitness roadmap (JSON with `primary_goal` and `milestones`; start from `docs/roadmap-template.json`) | `plan/roadmap` (Roadmap and Week pages, coach) |
+| Fitness roadmap (JSON with `primary_goal` and `milestones`; start from `docs/roadmap-template.json`; a target goal or checkpoint instead of a race: see below) | `plan/roadmap` (Roadmap and Week pages, coach) |
 | Diet discipline rules (`.txt`: `Bacon: 1x week max` lines, optional `---` then uses `Burger: 10/25/26`) | `plan/diet` |
 
 **Overlapping exports are fine.** Records are keyed by the real event (a cycle's start time, a Strava
@@ -44,3 +44,13 @@ Settings → **Upload from iPhone** → *Create an upload token* (shown once), t
 The token can only import (no reading). Files without an extension are named by content (xlsx, zip, pdf, json, md, csv,
 txt). Needs phone access (`./halo phone`, see the README) and Tailscale on on the phone. Ten bad tokens in ten minutes from one address are refused for ten minutes.
 
+
+## Roadmap targets
+
+A main goal can be a measurable target instead of a race: `"primary_goal": { "kind": "target", "event": "VO₂ max 50",
+"date": "2027-06-01", "target": { "metric": "vo2max", "value": 50 } }`. A milestone becomes a checkpoint with
+`"target": { "metric": "vo2max", "value": 47 }`. Metrics (`server/targets.ts`): `vo2max`, `weight` (lb), `body_fat` (%),
+`lean_mass` (lb), `rhr`, `hrv` (WHOOP 7-day averages), `run_5k`, `run_10k`, `run_half` (seconds; Strava best efforts),
+`lift` (lb, with `"of": "Bench Press"`, FitnessAI), `lab` (with `"of": "LDL CHOLESTEROL"`). When no data has a value
+yet, the planner asks for the current one and stores it as `plan/reading` (labelled "you entered"); `target.start` is
+filled in on save from the value at that moment, so progress counts from there.
