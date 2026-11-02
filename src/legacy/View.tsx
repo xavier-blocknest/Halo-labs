@@ -15,6 +15,7 @@ import { JournalPage } from '../app/JournalPage'
 import { CalendarPage, UpcomingCard } from '../app/CalendarPage'
 import { MonthReviewCard, MonthReviewDeepLink, MonthReviewLink } from '../app/MonthReview'
 import { WeekPlan } from '../app/WeekPlan'
+import { Slider } from '../app/Slider'
 
 /** A WHOOP-style ring (Recovery, Sleep): sizes with its column, up to 184 px; text scales with it (cqw). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1178,13 +1179,13 @@ export function View({ v }: { v: any }) {
                 </span>
               </div>
               {" "}
-              {/* One row that scrolls sideways (swipe on a phone), instead of wrapping into two rows. */}
-              <div className="kl-row" style={{"display": "flex", "overflowX": "auto", "scrollSnapType": "x mandatory", "gap": "12px", "paddingBottom": "6px", "scrollbarWidth": "thin"}}>
+              {/* One row as a slider (swipe, drag or arrows), instead of wrapping into two rows. */}
+              <Slider count={(v.lifts || []).length}>
                 {" "}
                 {(v.lifts || []).map((lf: any, _i1: number) => (
                   <Fragment key={_i1}>
                     {" "}
-                    <div style={{"flex": "0 0 min(250px, 78%)", "scrollSnapAlign": "start", "borderRadius": "14px", "border": "1px solid oklch(1 0 0 / 0.07)", "background": "oklch(1 0 0 / 0.02)", "padding": "14px 16px", "display": "flex", "flexDirection": "column", "gap": "10px", "minWidth": "0"}}>
+                    <div style={{"flex": "0 0 min(250px, 78%)", "borderRadius": "14px", "border": "1px solid oklch(1 0 0 / 0.07)", "background": "oklch(1 0 0 / 0.02)", "padding": "14px 16px", "display": "flex", "flexDirection": "column", "gap": "10px", "minWidth": "0"}}>
                       {" "}
                       <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "baseline", "gap": "8px"}}>
                         <span style={{"fontSize": "13px", "color": "oklch(0.74 0.015 255)"}}>
@@ -1221,7 +1222,7 @@ export function View({ v }: { v: any }) {
                   </Fragment>
                 ))}
                 {" "}
-              </div>
+              </Slider>
               {" "}
               <span style={{"fontSize": "12px", "color": "oklch(0.58 0.015 255)"}}>
                 {"Estimated with the Epley formula from sets of 12 reps or fewer."}
