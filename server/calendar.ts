@@ -7,7 +7,7 @@ import type { CalendarEvent } from './model.ts'
 import { diffDays, medium } from './dashboard/time.ts'
 
 export const EVENT_ID = /^[a-z0-9-]{4,40}$/
-export const EVENT_KINDS = ['appointment', 'doctor', 'race', 'event', 'other'] as const
+export const EVENT_KINDS = ['appointment', 'doctor', 'race', 'class', 'event', 'other'] as const
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 /** How far back the page keeps past events. */

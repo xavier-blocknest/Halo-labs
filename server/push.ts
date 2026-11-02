@@ -17,16 +17,17 @@ import { testsSummary } from './dashboard/tests.ts'
 import { addDays, diffDays, localHour, today } from './dashboard/time.ts'
 import { TZ } from './model.ts'
 import { publicUrl } from './oauth.ts'
+import { monthReview } from './dashboard/review.ts'
 
-export type PushKind = 'call' | 'problems' | 'calendar'
+export type PushKind = 'call' | 'problems' | 'calendar' | 'review'
 type Device = { id: string; label: string; endpoint: string; keys: { p256dh: string; auth: string }; created: string; lastSent: string | null }
 type Prefs = Record<PushKind, boolean>
-type Memo = { callDay?: string; alerted?: Record<string, string>; calSent?: Record<string, string> }
+type Memo = { callDay?: string; alerted?: Record<string, string>; calSent?: Record<string, string>; reviewMonth?: string }
 
 const DEVICES = 'push-devices', VAPID = 'push-vapid', PREFS = 'push-prefs', MEMO = 'push-memo'
 const devices = () => getSecret<Device[]>(DEVICES) ?? []
 const memo = () => getSecret<Memo>(MEMO) ?? {}
-export const prefs = (): Prefs => ({ call: true, problems: true, calendar: true, ...(getSecret<Partial<Prefs>>(PREFS) ?? {}) })
+export const prefs = (): Prefs => ({ call: true, problems: true, calendar: true, review: true, ...(getSecret<Partial<Prefs>>(PREFS) ?? {}) })
 
 type Vapid = { publicKey: string; jwk: { kty: string; crv: string; x: string; y: string; d: string } }
 const b64u = (b: Buffer | Uint8Array) => Buffer.from(b).toString('base64url')
@@ -100,7 +101,7 @@ export function unsubscribe(id: string) {
 
 export function setPrefs(p: Partial<Record<string, unknown>>) {
   const cur = prefs()
-  for (const k of ['call', 'problems', 'calendar'] as const) if (typeof p[k] === 'boolean') cur[k] = p[k]
+  for (const k of ['call', 'problems', 'calendar', 'review'] as const) if (typeof p[k] === 'boolean') cur[k] = p[k]
   setSecret(PREFS, cur)
   return cur
 }
@@ -274,6 +275,27 @@ export async function checkCalendar(now = Date.now()) {
   for (const x of due) await notify({ title: x.i.title, body: reminderText(x.i, x.off, day), tag: `cal-${x.i.id}-${x.off}`.slice(0, 64) })
 }
 
+// ---- Month in review ----------------------------------------------------------------------------
+
+/** Once a month: when the month before is over, "Review your month now!" from 8 AM on the 1st (any day of the first
+ *  week if the Mac was asleep then), with that month's headline numbers; tapping it opens the review. Sent once per
+ *  month; with the switch off the month is skipped, not saved up. Nothing is sent for a month without training data. */
+export async function checkMonthReview(now = Date.now()) {
+  const day = today(), stamp = new Date(now).toISOString(), hour = localHour(stamp)
+  const last = new Date(Date.UTC(+day.slice(0, 4), +day.slice(5, 7) - 2, 1)).toISOString().slice(0, 7)
+  if (memo().reviewMonth === last || Number(day.slice(8)) > 7 || hour < 8 || hour >= 21) return
+  if (!prefs().review || !devices().length) { setSecret(MEMO, { ...memo(), reviewMonth: last }); return }
+  const r = monthReview(last, day), t = r.training
+  setSecret(MEMO, { ...memo(), reviewMonth: last }) // once a month, even if there's nothing to show
+  if (!t) return
+  const name = r.label.split(' ')[0]
+  const bits = [`${t.days.now} active days`, `${t.hours.now} hrs`, r.bests.length ? `${r.bests.length} personal best${r.bests.length === 1 ? '' : 's'}` : ''].filter(Boolean)
+  await notify({ title: 'Review your month now!', body: `Your ${name} in review is ready: ${bits.join(' · ')}.`, tag: `review-${last}`, url: `/?review=${last}` })
+  console.log(`push: month review ${last}`)
+}
+
 export function startPushScheduler() {
   setInterval(() => { checkCalendar().catch(e => console.error('push: calendar:', (e as Error).message)) }, 60_000)
+  const review = () => { checkMonthReview().catch(e => console.error('push: month review:', (e as Error).message)) }
+  setTimeout(review, 60_000); setInterval(review, 15 * 60_000)
 }

@@ -18,6 +18,9 @@ import { dashboard } from './dashboard/index.ts'
 import { buildSessions, swimView, SOURCE_CHOICES, SOURCE_SPORTS, SOURCES_KEY, sourcePrefs, type SourcePrefs } from './dashboard/sessions.ts'
 import { parseWhen, roadmapDoc, roadmapEdits, SCHEDULE_DAYS, STATUSES, type MilestoneEdit, type RoadmapEdits } from './dashboard/plan.ts'
 import { today } from './dashboard/time.ts'
+import { monthReview, reviewMonths } from './dashboard/review.ts'
+import { runView } from './dashboard/runs.ts'
+import { RESTART_75_HARD_TOOL, restart75Hard } from './hard75.ts'
 import { cleanTarget, current, def, isMetric, parseValue, saveReading, targetChoices } from './targets.ts'
 import { deleteEntry, formatEntry, JOURNAL_ID, journalEntries, saveEntry, workoutsAround } from './journal.ts'
 import { deleteEvent, EVENT_ID, saveEvent } from './calendar.ts'
@@ -129,7 +132,7 @@ async function complete(req: IncomingMessage, res: ServerResponse) {
   const save = (text: string) => { if (memory && q && text) setTimeout(() => saveTurn(q, text, String(page ?? '').slice(0, 40)).catch(e => console.error('memory: save failed:', e)), 2_000) }
   // Chat and voice can save week plans (save_week_plan) and manage the Overview priorities (update_priorities): run
   // the tool, hand the result back, let the coach finish. onSaved tells the page to reload its data.
-  const tools = memory ? [SAVE_WEEK_PLAN_TOOL, UPDATE_PRIORITIES_TOOL] : undefined
+  const tools = memory ? [SAVE_WEEK_PLAN_TOOL, UPDATE_PRIORITIES_TOOL, RESTART_75_HARD_TOOL] : undefined
   const runTool = (name: string, input: Record<string, unknown>, onSaved: (what: string) => void): string => {
     if (name === 'save_week_plan') {
       const plan = saveWeekPlan(input, 'coach'); onSaved(plan.start)
@@ -140,6 +143,11 @@ async function complete(req: IncomingMessage, res: ServerResponse) {
       const done = updatePriorities(input); onSaved('priorities')
       console.log(`coach: priorities ${done.join('; ')}`)
       return `Done: ${done.join('; ')}. The Priorities card on the Overview shows it now.`
+    }
+    if (name === 'restart_75_hard') {
+      const r = restart75Hard(input); onSaved('roadmap')
+      console.log(`coach: 75 Hard restarted ${r.start}`)
+      return `75 Hard restarted: day 1 is ${r.start}, day ${r.days} (the last) is ${r.end}. The Roadmap card shows it now.`
     }
     throw new Error(`Unknown tool ${name}`)
   }
@@ -674,6 +682,14 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
     if (url.pathname === '/api/roadmap/doc' && req.method === 'GET') return send(res, 200, { doc: roadmapDoc()?.doc ?? null })
     if (url.pathname === '/api/roadmap/doc' && req.method === 'PUT') return await saveRoadmapDoc(req, res)
     // Roadmap targets: the metrics and his current values (for the planner), and a value he enters himself.
+    // Month in review: one finished month's highlights across every source, vs the month before. The month in
+    // progress opens on the 1st of the next one.
+    if (url.pathname === '/api/review' && req.method === 'GET') {
+      const t = today(), m = url.searchParams.get('month') ?? reviewMonths(t)[0] ?? ''
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new AuthError('Pick a month like 2026-10.')
+      if (m >= t.slice(0, 7)) throw new AuthError(`${m} isn't over yet: its review opens on the 1st of next month.`)
+      return send(res, 200, { review: monthReview(m, t), months: reviewMonths(t) })
+    }
     if (url.pathname === '/api/targets' && req.method === 'GET') return send(res, 200, targetChoices(today()))
     if (url.pathname === '/api/targets/reading' && req.method === 'POST') {
       const b = JSON.parse(await readBody(req)) as { metric?: unknown; of?: unknown; value?: unknown }
@@ -697,6 +713,11 @@ HALO_DB_KEY=${process.env.HALO_DB_KEY}
         if (req.method === 'PUT') { const event = saveEvent(cm[1], JSON.parse(await readBody(req))); calendarChanged(); return send(res, 200, { event }) }
         if (req.method === 'DELETE') { deleteEvent(cm[1]); calendarChanged(); return send(res, 200, { ok: true }) }
       } catch (e) { return send(res, 400, { error: (e as Error).message }) }
+    }
+    const rv = /^\/api\/runs\/([^/]+)$/.exec(url.pathname)
+    if (rv && req.method === 'GET') {
+      const v = runView(decodeURIComponent(rv[1]))
+      return v ? send(res, 200, v) : send(res, 404, { error: 'No run with that id.' })
     }
     const sw = /^\/api\/swims\/([^/]+)$/.exec(url.pathname)
     if (sw && req.method === 'GET') {

@@ -8,7 +8,7 @@ const GROUPS: [string, RegExp][] = [
   ['Lipids', /CHOLESTEROL|TRIGLYCERIDES|LDL|HDL|APOLIPOPROTEIN|LIPOPROTEIN|CHOL\/HDLC/],
   ['Iron & blood', /IRON|FERRITIN|SATURATION|HEMOGLOBIN(?! A1c)|HEMATOCRIT|BLOOD CELL|PLATELET|MCV|MCH|RDW|MPV|NEUTROPHILS|LYMPHOCYTES|MONOCYTES|EOSINOPHILS|BASOPHILS/],
   ['Hormones', /TESTOSTERONE|SHBG|SEX HORMONE|ESTRADIOL|\bLH\b|\bFSH\b|CORTISOL|DHEA/],
-  ['Metabolic', /GLUCOSE|A1c|INSULIN|TSH|SODIUM|POTASSIUM|CHLORIDE|CARBON DIOXIDE|CALCIUM|PROTEIN|ALBUMIN|GLOBULIN/],
+  ['Metabolic', /GLUCOSE|A1c|INSULIN|TSH|\bT4\b|SODIUM|POTASSIUM|CHLORIDE|CARBON DIOXIDE|CALCIUM|PROTEIN|ALBUMIN|GLOBULIN/],
   ['Liver & kidney', /\bALT\b|\bAST\b|ALKALINE|BILIRUBIN|CREATININE|EGFR|UREA|\bBUN\b/],
   ['Inflammation & vitamins', /CRP|HOMOCYSTEINE|VITAMIN/],
 ]
@@ -19,7 +19,10 @@ const nice = (m: string) => m.toLowerCase().replace(/(^|[\s(/-])([a-z])/g, (_, p
   .replace(/\b(Ldl|Hdl|Alt|Ast|Tsh|Lh|Fsh|Egfr|Bun|Crp|Hs|Dhea|Mcv|Mch|Mchc|Rdw|Mpv|Shbg|Ms|Ia)\b/g, s => s.toUpperCase()).replace(/A1C/, 'A1c')
 
 export function testsSummary() {
-  const draws = readRecords<LabDraw>('labs', 'draw').map(d => ({ id: d.day!, label: short(d.day!), year: d.day!.slice(0, 4), ...d.data }))
+  // Draws from an earlier year than the newest one carry the year in their label ("Dec 28, 2023"), so an old
+  // report can't be mistaken for a recent one wherever its label shows (compare picker, headers, watchlist, coach).
+  const rows = readRecords<LabDraw>('labs', 'draw'), newest = rows.at(-1)?.day?.slice(0, 4)
+  const draws = rows.map(d => ({ id: d.day!, label: short(d.day!) + (d.day!.slice(0, 4) !== newest ? ', ' + d.day!.slice(0, 4) : ''), dayL: short(d.day!), year: d.day!.slice(0, 4), ...d.data }))
   const results = readRecords<LabResult>('labs', 'result')
   const markers = new Map<string, { name: string; group: string; unit: string | null; low: number | null; high: number | null; range: string | null; values: Record<string, { v: number | null; t: string; f: 'H' | 'L' | null }> }>()
   for (const r of results) {

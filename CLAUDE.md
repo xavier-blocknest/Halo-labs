@@ -89,11 +89,14 @@ server/
                     problems; devices/keys/switches in secrets push-*; Settings → Notifications (src/app/Notifications.tsx, public/sw.js)
   targets.ts        roadmap targets (goal or checkpoint = metric + value by a date): metrics, current values, entered
                     values (plan/reading), progress; /api/targets, /api/targets/reading
+  dashboard/review.ts  Month in review (GET /api/review, finished months only; push.ts sends "Review your month now!" on the 1st)
+  dashboard/runs.ts    run view (GET /api/runs/:id): WHOOP impact, Runna plan type/weather/splits/route, best efforts with PRs
+  hard75.ts         coach's restart_75_hard tool (day 1 = today or a recent day; rules and length kept)
   priorities.ts     coach's update_priorities tool: its own Overview priorities + edits/hides of the data-driven ones (plan/priority)
 src/
   app/              React components: App (auth gate, onboarding gate, data loading), LockScreen, Onboarding (first-run
                     wizard; state in /api/onboarding), DataPage (Settings), ApiKeys,
-                    RecoveryKit, CoachPicker, CoachInstructions (standing instructions for every coach; im4-coachnotes), CoachMemory, Uploader, RoadmapView, RoadmapPlanner (builds/edits the
+                    RecoveryKit, CoachPicker, CoachInstructions (standing instructions for every coach; im4-coachnotes), CoachMemory, Uploader, RoadmapView, MonthReview (story + Overview card + deep link /?review=), RunDetail (run view), RoadmapPlanner (builds/edits the
                     whole roadmap; /api/roadmap/doc), DeleteAll (Settings → Delete all data; POST /api/wipe), FuelView, JournalPage, CalendarPage (+ UpcomingCard on Overview: next 14 days), WeekPlan, …
   legacy/           logic.tsx (shell: nav, layout, boot sequence, chat UI; plain JS, @ts-nocheck),
                     builders.tsx (every page's view model + voice + coach prompts), View.tsx (page layout, reads only v.*)

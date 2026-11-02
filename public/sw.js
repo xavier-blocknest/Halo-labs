@@ -14,6 +14,8 @@ self.addEventListener('notificationclick', e => {
   const url = new URL(e.notification.data?.url || '/', self.location.origin).href
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
     const open = list.find(c => c.url.startsWith(self.location.origin))
-    return open ? open.focus() : self.clients.openWindow(url)
+    // Already open: bring it forward and tell it what to show (e.g. the month in review); else open it there.
+    if (open) { open.postMessage({ open: url }); return open.focus() }
+    return self.clients.openWindow(url)
   }))
 })

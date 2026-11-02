@@ -1,0 +1,161 @@
+/* Month in review: a story over the page. Each card sets its mood with --h1/--h2 (hues); slow-moving light behind it,
+   cards slide in, their contents rise in one after another (--i), numbers count up (MonthReview.tsx). `.still` (Reduce
+   motion) turns every animation off. */
+@property --h1 { syntax: '<number>'; inherits: true; initial-value: 210; }
+@property --h2 { syntax: '<number>'; inherits: true; initial-value: 285; }
+
+.mr-back { position: fixed; inset: 0; z-index: 10000; background: oklch(0.08 0.01 262 / 0.86); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 16px;
+  animation: mr-fade .35s ease both; }
+.mr { --h1: 210; --h2: 285; position: relative; isolation: isolate; width: min(420px, 100%); height: min(780px, calc(100dvh - 32px)); border-radius: 28px; overflow: hidden; display: flex; flex-direction: column;
+  border: 1px solid oklch(0.85 0.12 var(--h1) / 0.28); background: oklch(0.14 0.02 var(--h1));
+  box-shadow: 0 30px 80px oklch(0 0 0 / 0.6), 0 0 60px oklch(0.75 0.14 var(--h1) / 0.18);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif; color: oklch(0.97 0.005 250);
+  transition: --h1 .9s ease, --h2 .9s ease, border-color .9s ease; animation: mr-pop .5s cubic-bezier(.2, .9, .25, 1.15) both; }
+
+/* Light: three soft blobs drifting slowly, tinted by the card's hues. */
+.mr-glow { position: absolute; inset: -20%; z-index: -1; filter: blur(50px); opacity: .85; pointer-events: none; }
+.mr-glow i { position: absolute; border-radius: 50%; }
+.mr-glow i:nth-child(1) { width: 70%; height: 55%; left: -5%; bottom: -5%; background: oklch(0.62 0.2 var(--h1) / 0.55); animation: mr-drift1 14s ease-in-out infinite alternate; }
+.mr-glow i:nth-child(2) { width: 60%; height: 50%; right: -10%; top: 5%; background: oklch(0.55 0.2 var(--h2) / 0.45); animation: mr-drift2 18s ease-in-out infinite alternate; }
+.mr-glow i:nth-child(3) { width: 45%; height: 40%; left: 30%; top: 40%; background: oklch(0.7 0.16 calc(var(--h1) + 30) / 0.25); animation: mr-drift3 22s ease-in-out infinite alternate; }
+.mr::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; /* grain + vignette for depth */
+  background: radial-gradient(120% 90% at 50% 40%, transparent 55%, oklch(0 0 0 / 0.45)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E"); }
+
+/* Story bars */
+.mr-bars { display: flex; gap: 4px; padding: 14px 16px 0; position: relative; z-index: 3; }
+.mr-bars i { flex: 1; height: 3px; border-radius: 2px; background: oklch(1 0 0 / 0.2); overflow: hidden; cursor: pointer; }
+.mr-bars b { display: block; height: 100%; width: 0; background: oklch(0.98 0.005 250); border-radius: 2px; }
+.mr-bars b.full { width: 100%; }
+.mr-bars b.run { animation-name: mr-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
+.mr-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 0; position: relative; z-index: 3; }
+.mr-month { background: oklch(1 0 0 / 0.08); color: inherit; border: 1px solid oklch(1 0 0 / 0.14); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; backdrop-filter: blur(8px); }
+.mr-x { width: 34px; height: 34px; border-radius: 50%; border: 1px solid oklch(1 0 0 / 0.16); background: oklch(1 0 0 / 0.08); color: inherit; font-size: 20px; line-height: 1; cursor: pointer; backdrop-filter: blur(8px); transition: transform .2s ease, background .2s ease; }
+.mr-x:hover { transform: rotate(90deg); background: oklch(1 0 0 / 0.16); }
+
+/* Card: slides in from the side it came from; its items rise in one after another. */
+.mr-card { container-type: inline-size; flex: 1; overflow-y: auto; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; padding: 22px 24px 12px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: none; }
+.mr-card.fwd { animation: mr-in-r .55s cubic-bezier(.2, .8, .2, 1) both; }
+.mr-card.back { animation: mr-in-l .55s cubic-bezier(.2, .8, .2, 1) both; }
+.mr-in { animation: mr-rise .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 90ms + 120ms); }
+
+.mr-eyebrow { font-size: 12px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.88 0.12 var(--h1)); }
+.mr-k { font-size: 12.5px; color: oklch(0.8 0.02 var(--h1) / 0.8); margin-bottom: 2px; }
+.mr-v { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.mr-v.sm { font-size: 22px; }
+.mr-v span, .mr-word span { font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 12.5px; letter-spacing: 0; color: oklch(0.78 0.02 var(--h1) / 0.8); margin-left: 6px; }
+.mr-line { font-size: 14.5px; line-height: 1.5; color: oklch(0.88 0.01 255); margin: 0; }
+.mr-line b { color: oklch(0.97 0.005 250); font-weight: 500; }
+
+/* Big numbers and words: gradient text with a soft glow */
+.mr-big { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 96px; line-height: .95; letter-spacing: -0.05em; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, oklch(0.99 0.005 250), oklch(0.85 0.12 var(--h1))); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 28px oklch(0.75 0.15 var(--h1) / 0.45)); }
+.mr-big span { display: block; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; letter-spacing: 0; margin-top: 10px; -webkit-text-fill-color: oklch(0.85 0.02 var(--h1)); }
+.mr-big.gold { background: linear-gradient(100deg, oklch(0.95 0.08 95), oklch(0.82 0.16 75), oklch(0.97 0.06 95), oklch(0.8 0.16 70)); background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; animation: mr-rise .7s cubic-bezier(.2, .8, .2, 1) both, mr-shine 3.5s 1s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 90ms + 120ms), 1s; }
+.mr-hero { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; border-radius: 20px; background: oklch(1 0 0 / 0.06); border: 1px solid oklch(1 0 0 / 0.08); backdrop-filter: blur(10px); }
+.mr-word { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 44px; line-height: 1.05; letter-spacing: -0.035em; font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, oklch(0.99 0.005 250), oklch(0.86 0.1 var(--h1))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.mr-word span { -webkit-text-fill-color: oklch(0.8 0.02 var(--h1)); }
+/* A big value with its ▲/▼ chip beside it: the value scales with the card (cqi) so both fit on one line on a phone. */
+.mr-valrow { display: flex; align-items: center; gap: 12px; }
+.mr-valrow .mr-word { font-size: min(44px, 12.5cqi); white-space: nowrap; }
+
+/* Rows */
+/* A record and, on its own line under it, the session it came from. */
+.mr-row.stack { flex-direction: column; align-items: flex-start; gap: 2px; }
+.mr-sub { font-size: 13px; line-height: 1.4; color: oklch(0.85 0.02 var(--h1) / 0.85); }
+.mr-stat, .mr-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding-bottom: 11px; border-bottom: 1px solid oklch(1 0 0 / 0.08); }
+.mr-delta { display: inline-block; font-size: 12.5px; white-space: nowrap; text-align: right; padding: 4px 10px; border-radius: 999px; background: oklch(1 0 0 / 0.08); color: oklch(0.95 0.01 250); }
+.mr-delta.up { background: oklch(0.85 0.1 var(--h1) / 0.16); }
+.mr-delta.new { color: oklch(0.88 0.12 var(--h1)); }
+.mr-delta small { display: block; font-size: 10.5px; color: oklch(0.75 0.015 255); }
+.mr-list { display: flex; flex-direction: column; gap: 8px; }
+.mr-list > div { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; font-size: 14px; padding: 10px 14px; border-radius: 14px; background: oklch(1 0 0 / 0.06); border: 1px solid oklch(1 0 0 / 0.06); }
+.mr-list > div.done b { color: oklch(0.85 0.15 160); }
+.mr-list b { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 500; text-align: right; }
+.mr-list small { grid-column: 1 / -1; font-size: 11.5px; color: oklch(0.72 0.015 255); }
+
+/* Dot calendar: dots pop in one day after another; active days glow. */
+.mr-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 9px; margin: 4px 0; }
+.mr-cal b { font-size: 10.5px; font-weight: 500; text-align: center; color: oklch(0.75 0.02 var(--h1) / 0.7); }
+.mr-cal i { aspect-ratio: 1; border-radius: 50%; background: oklch(1 0 0 / 0.1); animation: mr-dot .45s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--d, 0) * 28ms + 450ms); }
+.mr-cal i.pad { visibility: hidden; animation: none; }
+.mr-cal i.a { background: radial-gradient(circle at 35% 30%, oklch(0.98 0.04 var(--h1)), oklch(0.8 0.15 var(--h1)) 60%); box-shadow: 0 0 12px oklch(0.8 0.15 var(--h1) / 0.65); }
+.mr-cal i.f { background: transparent; border: 1px dashed oklch(1 0 0 / 0.2); }
+
+/* Sessions by sport: bars grow in */
+.mr-bars-h { display: flex; flex-direction: column; gap: 7px; }
+.mr-bars-h div { display: grid; grid-template-columns: 78px 1fr 26px; align-items: center; gap: 10px; font-size: 12.5px; color: oklch(0.85 0.02 var(--h1)); }
+.mr-bars-h i { height: 8px; border-radius: 4px; background: linear-gradient(90deg, oklch(0.85 0.14 var(--h1)), oklch(0.7 0.18 var(--h2))); width: var(--w);
+  transform-origin: left; animation: mr-grow .9s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--d, 0) * 80ms + 600ms); }
+.mr-bars-h b { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 500; text-align: right; color: oklch(0.97 0.005 250); }
+
+/* Recovery ring and day split */
+.mr-ringrow { display: flex; align-items: center; gap: 18px; }
+.mr-ring { width: min(108px, 30cqi); height: min(108px, 30cqi); flex: none; transform: rotate(-90deg); }
+.mr-ring circle { fill: none; stroke: oklch(1 0 0 / 0.1); stroke-width: 10; }
+.mr-ring circle.v { stroke: oklch(0.82 0.16 var(--h1)); stroke-linecap: round; stroke-dasharray: 326.7; stroke-dashoffset: calc(326.7 * (1 - var(--p)));
+  filter: drop-shadow(0 0 6px oklch(0.8 0.16 var(--h1) / 0.7)); animation: mr-ring 1.4s .35s cubic-bezier(.2, .8, .2, 1) both; }
+.mr-rec { display: flex; gap: 4px; border-radius: 12px; overflow: hidden; font-size: 11.5px; font-weight: 500; }
+.mr-rec i { font-style: normal; padding: 7px 9px; white-space: nowrap; overflow: hidden; color: oklch(0.15 0.02 262); flex: var(--f) 1 0;
+  transform-origin: left; animation: mr-grow .9s cubic-bezier(.2, .8, .2, 1) both; animation-delay: .5s; }
+.mr-rec .g { background: oklch(0.8 0.16 155); } .mr-rec .y { background: oklch(0.85 0.15 85); animation-delay: .65s; } .mr-rec .r { background: oklch(0.7 0.19 25); animation-delay: .8s; }
+
+/* Title and wrap cards */
+.mr-cover { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; text-align: left; }
+/* Sized to the month's name so "September" fits a phone as well as "May" (--len = letters; 100cqi = card width). */
+.mr-title { white-space: nowrap; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: min(92px, calc(100cqi / (var(--len, 7) * 0.6))); line-height: .9; letter-spacing: -0.06em;
+  background: linear-gradient(120deg, oklch(0.99 0.005 250) 20%, oklch(0.85 0.14 var(--h1)) 60%, oklch(0.75 0.18 var(--h2))); background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: mr-rise .8s cubic-bezier(.2, .8, .2, 1) both, mr-shine 6s 1.2s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 90ms + 120ms), 1.2s; }
+.mr-title.sm { font-size: min(56px, calc(100cqi / (var(--len, 7) * 0.6))); }
+.mr-year { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 22px; color: oklch(0.85 0.04 var(--h1)); }
+.mr-coverline { margin-top: 18px; font-size: 15px; line-height: 1.5; color: oklch(0.9 0.01 255); }
+.mr-hint { margin-top: 28px; font-size: 12.5px; color: oklch(0.8 0.02 var(--h1) / 0.8); }
+.mr-hint::after { content: ' →'; display: inline-block; animation: mr-nudge 1.4s ease-in-out infinite; }
+.mr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.mr-grid > div { padding: 14px 16px; border-radius: 18px; background: oklch(1 0 0 / 0.07); border: 1px solid oklch(1 0 0 / 0.08); backdrop-filter: blur(10px); display: flex; flex-direction: column; }
+.mr-grid b { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 500; font-size: 30px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.mr-grid span { font-size: 12px; color: oklch(0.8 0.02 var(--h1)); }
+.mr-replay { position: relative; z-index: 4; margin-top: 16px; padding: 10px 18px; border-radius: 999px; border: 1px solid oklch(1 0 0 / 0.2); background: oklch(1 0 0 / 0.1); color: inherit; font: inherit; font-size: 14px; cursor: pointer; transition: background .2s, transform .2s; }
+.mr-replay:hover { background: oklch(1 0 0 / 0.18); transform: translateY(-1px); }
+
+.mr-foot { text-align: center; font-size: 11px; letter-spacing: .04em; color: oklch(0.75 0.02 var(--h1) / 0.7); padding: 0 0 14px; min-height: 13px; }
+.mr-loading { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.mr-loading i { width: 9px; height: 9px; border-radius: 50%; background: oklch(0.85 0.12 var(--h1)); animation: mr-bounce 1s ease-in-out infinite; }
+.mr-loading i:nth-child(2) { animation-delay: .15s; } .mr-loading i:nth-child(3) { animation-delay: .3s; }
+
+/* Overview / Week page card */
+.mr-cardlink { position: relative; overflow: hidden; isolation: isolate; width: 100%; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 22px 24px; border-radius: 18px;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif; border: 1px solid oklch(0.82 0.13 210 / 0.35); background: oklch(0.17 0.02 262 / 0.92); color: oklch(0.96 0.005 250);
+  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+.mr-cardlink:hover { transform: translateY(-2px); border-color: oklch(0.82 0.13 210 / 0.6); box-shadow: 0 10px 30px oklch(0.75 0.14 210 / 0.18); }
+.mr-cardglow { position: absolute; inset: -40%; z-index: -1; filter: blur(40px); opacity: .7;
+  background: radial-gradient(35% 45% at 80% 20%, oklch(0.6 0.2 285 / 0.5), transparent), radial-gradient(40% 50% at 95% 90%, oklch(0.7 0.16 210 / 0.45), transparent);
+  animation: mr-drift2 12s ease-in-out infinite alternate; }
+.mr-cardlink .mr-eyebrow { color: oklch(0.85 0.12 210); }
+.mr-cardlink b { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 24px; font-weight: 500; letter-spacing: -0.02em; }
+.mr-cardlink > span:not(.mr-eyebrow):not(.mr-cardglow) { font-size: 13px; color: oklch(0.78 0.015 255); }
+.mr-cardlink em { align-self: flex-start; font-style: normal; font-size: 12.5px; margin-top: 8px; padding: 5px 12px; border-radius: 999px; background: oklch(0.82 0.13 210 / 0.15); color: oklch(0.88 0.12 210); }
+
+@keyframes mr-fade { from { opacity: 0 } }
+@keyframes mr-pop { from { opacity: 0; transform: translateY(24px) scale(.96) } }
+@keyframes mr-in-r { from { opacity: 0; transform: translateX(40px) } }
+@keyframes mr-in-l { from { opacity: 0; transform: translateX(-40px) } }
+@keyframes mr-rise { from { opacity: 0; transform: translateY(18px); filter: blur(6px) } }
+@keyframes mr-fill { from { width: 0 } to { width: 100% } }
+@keyframes mr-dot { from { opacity: 0; transform: scale(0) } }
+@keyframes mr-grow { from { transform: scaleX(0) } }
+@keyframes mr-ring { from { stroke-dashoffset: 326.7 } }
+@keyframes mr-shine { 0%, 100% { background-position: 0% 50% } 50% { background-position: 100% 50% } }
+@keyframes mr-nudge { 0%, 100% { transform: translateX(0) } 50% { transform: translateX(5px) } }
+@keyframes mr-bounce { 0%, 100% { transform: translateY(0); opacity: .5 } 50% { transform: translateY(-8px); opacity: 1 } }
+@keyframes mr-drift1 { to { transform: translate(18%, -12%) scale(1.15) } }
+@keyframes mr-drift2 { to { transform: translate(-15%, 14%) scale(1.1) } }
+@keyframes mr-drift3 { to { transform: translate(-20%, -18%) scale(.9) } }
+
+/* Reduce motion: everything still, no auto-advance (the bars show where you are). */
+.mr.still *, .mr.still::after, .mr.still { animation: none !important; transition: none !important; }
+.mr.still .mr-bars b.run { width: 100%; }
+@media (prefers-reduced-motion: reduce) { .mr-back, .mr-cardlink, .mr-cardglow { animation: none !important; transition: none !important; } }

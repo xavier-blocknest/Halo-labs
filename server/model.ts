@@ -47,6 +47,9 @@ export type StravaActivity = {
   // Runs only, from the activity detail (API): Strava's best efforts (fastest 1K, mile, 5K… inside the run). [] once
   // fetched with none; undefined until the detail is fetched (bulk-export history, backfilled by the connector).
   bestEfforts?: { name: string; distanceM: number; elapsedS: number }[]
+  // Runs, from the activity (list: route line; detail: per-mile splits). Undefined for history fetched before Nov 2026.
+  polyline?: string | null // Google encoded polyline (Strava's summary map)
+  splits?: { m: number; s: number; movingS: number; elevM: number | null; hr: number | null }[] // splits_standard (miles)
 }
 
 /** strava/gear, id = gear id. */
@@ -66,8 +69,18 @@ export type LiftSet = { workout: string; exercise: string; loggedAt: string; rep
 export type RunnaRun = {
   start: string; name: string; type: string; description: string | null; workoutId: string | null; planWeek: number | null
   distanceM: number | null; movingS: number | null; elapsedS: number | null; elevGainM: number | null
-  feedback: string | null; stravaIds: number[]; mileSplits: { m: number; s: number }[]
+  feedback: string | null; stravaIds: number[]
+  mileSplits: { m: number; s: number; speed?: number | null }[] // speed: Runna's average m/s for the split
+  runType?: string | null // the plan workout's type (from workoutId): EASY_RUN, LONG_RUN, TEMPO, INTERVALS…
+  weather?: RunWeather | null
+  route?: { polyline: string | null; address: string | null } | null
+  fastest5miS?: number | null // Runna's fastest 5 miles inside the run (Strava has no 5-mile best effort)
 }
+/** Weather Runna recorded for a run (°C, m/s as Runna sends them). */
+export type RunWeather = { tempC: number | null; feelsC: number | null; humidity: number | null; windMs: number | null; gustMs: number | null; precipMm: number | null; status: string | null; desc: string | null }
+/** runna/effort, id = Strava activity id. What Runna adds to a Strava run it only mirrors (not a Runna run): its fastest
+ *  5 miles, and its guess at the run type from the data (predictedRunType). */
+export type RunnaEffort = { stravaId: string; fastest5miS: number | null; guessType?: string | null }
 
 /** macrofactor/day, id = day. Nutrition, scale and expenditure for one day; any field may be missing. */
 export type NutritionDay = {
@@ -115,6 +128,8 @@ export type Vo2Test = {
   anaerobicThreshold: { hr: number | null; vo2: number | null } | null
   zones: { zone: string; lowHr: number | null; highHr: number | null }[]
   recovery: { peak: number | null; after1m: number | null; after2m: number | null } | null
+  // The report's STAGE AVERAGES table: what fuelled each stage (carbs vs fat, from RER) and how much energy it took.
+  stages?: { n: number; time: string; hr: number; mph: number; vo2: number; rer: number; choPct: number; fatPct: number; kcalHr: number }[]
 }
 
 /** form/swim, id = start. One swim from a FORM Smart Swim goggles CSV export: the header (pool, devices) and every pool
@@ -201,6 +216,6 @@ export type JournalEntry = {
 /** calendar/event, id = random. An event the athlete adds on the Calendar page (appointment, doctor consultation, …).
  *  `time` is local "HH:MM" or null for all-day. */
 export type CalendarEvent = {
-  title: string; date: string; time: string | null; kind: 'appointment' | 'doctor' | 'race' | 'event' | 'other'
+  title: string; date: string; time: string | null; kind: 'appointment' | 'doctor' | 'race' | 'class' | 'event' | 'other'
   location: string; note: string; updated: string
 }

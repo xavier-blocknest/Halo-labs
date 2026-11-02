@@ -46,6 +46,8 @@ export type ApiActivity = {
   average_heartrate?: number; max_heartrate?: number; average_speed?: number; max_speed?: number; calories?: number; suffer_score?: number | null
   gear_id?: string | null; commute?: boolean; device_name?: string
   best_efforts?: { name: string; distance: number; elapsed_time: number }[] // detail only, runs
+  map?: { summary_polyline?: string | null; polyline?: string | null }
+  splits_standard?: { distance: number; elapsed_time: number; moving_time: number; elevation_difference?: number | null; average_heartrate?: number | null }[] // detail only
 }
 type ApiGear = { id: string; name?: string; nickname?: string; distance?: number; retired?: boolean }
 export type ApiAthlete = { bikes?: ApiGear[]; shoes?: ApiGear[] }
@@ -61,6 +63,8 @@ export function apiActivityRow(a: ApiActivity, gearNames: Map<string, string>): 
     calories: n(a.calories), relativeEffort: n(a.suffer_score), gear: a.gear_id ? gearNames.get(a.gear_id) ?? null : null,
     commute: a.commute ?? null, device: a.device_name ?? null,
     bestEfforts: a.best_efforts?.map(e => ({ name: e.name, distanceM: e.distance, elapsedS: e.elapsed_time })),
+    polyline: a.map ? a.map.summary_polyline || a.map.polyline || null : undefined,
+    splits: a.splits_standard?.map(x => ({ m: x.distance, s: x.elapsed_time, movingS: x.moving_time, elevM: x.elevation_difference ?? null, hr: x.average_heartrate ?? null })),
   }
   return { source: 'strava', kind: 'activity', id: String(a.id), day: a.start_date_local.slice(0, 10), data }
 }

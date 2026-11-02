@@ -132,7 +132,7 @@ export function SwimDetail({ id, onClose }: { id: string; onClose: () => void })
       const j = await r.json().catch(() => ({}))
       if (!live) return
       if (r.ok) setD(j); else setErr(j.error ?? `Couldn't load this swim (${r.status})`)
-    }).catch(() => live && setErr('Network error: is the Jetson reachable?'))
+    }).catch(() => live && setErr('Network error: is Halo Labs running?'))
     return () => { live = false }
   }, [id])
   useEffect(() => {

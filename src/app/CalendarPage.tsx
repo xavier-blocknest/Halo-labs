@@ -31,6 +31,7 @@ type Draft = { id: string | null; title: string; date: string; time: string; kin
 
 const KINDS: { k: string; label: string; c: string }[] = [
   { k: 'appointment', label: 'Appointment', c: G }, { k: 'doctor', label: 'Doctor', c: W }, { k: 'race', label: 'Race', c: A },
+  { k: 'class', label: 'Class', c: 'oklch(0.76 0.13 300)' }, // a fitness class: spin, yoga, swim lesson…
   { k: 'event', label: 'Event', c: T2 }, { k: 'other', label: 'Other', c: T2 },
 ]
 const kindOf = (k: string) => KINDS.find(x => x.k === k) ?? (k === 'lab' ? { k, label: 'Labs', c: V } : k === 'milestone' ? { k, label: 'Milestone', c: T2 } : { k, label: 'Event', c: T2 })
@@ -120,7 +121,7 @@ export function CalendarPage({ D }: { D: any }) {
     setDraft(i ? { id: i.id, title: i.title, date: i.date, time: i.time ?? '', kind: i.kind, location: i.location, note: i.note }
       : { id: null, title: '', date: date ?? (day && day >= today ? day : today), time: '', kind: 'appointment', location: '', note: '' })
   }
-  const reload = () => window.dispatchEvent(new Event('fitlabs:data'))
+  const reload = () => window.dispatchEvent(new Event('halolabs:data'))
   const save = async () => {
     if (!draft) return
     if (!draft.title.trim()) return setErr('Give the event a title.')
@@ -179,10 +180,10 @@ export function CalendarPage({ D }: { D: any }) {
           <button className="cal-btn pri" onClick={() => open(null)}>+ Add event</button>
         </div>
         {upcoming.length ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,150px),1fr))', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(100%,200px),1fr))', gap: '16px' }}>
             {upcoming.slice(0, 4).map(i => (
               <div key={i.id} onClick={i.source === 'you' ? () => open(i) : undefined} className={i.source === 'you' ? 'cal-row' : undefined}
-                style={{ border: `1px solid ${LINE}`, borderRadius: '14px', padding: '14px 16px', background: 'oklch(0.165 0.017 262)', display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+                style={{ border: `1px solid ${LINE}`, borderRadius: '16px', padding: '18px 20px', background: 'oklch(0.165 0.017 262)', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                   <span style={{ fontFamily: GROTESK, fontSize: i.daysTo <= 1 ? '24px' : '34px', fontWeight: 500, color: i.daysTo <= 1 ? A : T1, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                     {i.daysTo <= 1 ? until(i.daysTo) : i.daysTo}

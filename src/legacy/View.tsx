@@ -10,8 +10,10 @@ import { RecoveryWork } from '../app/RecoveryWork'
 import { LiftVolume } from '../app/LiftVolume'
 import { PersonalBests } from '../app/PersonalBests'
 import { SwimDetail } from '../app/SwimDetail'
+import { RunDetail } from '../app/RunDetail'
 import { JournalPage } from '../app/JournalPage'
 import { CalendarPage, UpcomingCard } from '../app/CalendarPage'
+import { MonthReviewCard, MonthReviewDeepLink, MonthReviewLink } from '../app/MonthReview'
 import { WeekPlan } from '../app/WeekPlan'
 
 /** A WHOOP-style ring (Recovery, Sleep): sizes with its column, up to 184 px; text scales with it (cqw). */
@@ -51,6 +53,7 @@ function Dial({ d }: { d: any }) {
 export function View({ v }: { v: any }) {
   return (
     <>
+    <MonthReviewDeepLink />
     {" "}
     <div style={{"minHeight": "100vh", "background": "radial-gradient(900px 500px at 75% -10%, oklch(0.82 0.13 210 / 0.10), transparent 70%), linear-gradient(oklch(1 0 0 / 0.018) 1px, transparent 1px) 0 0 / 48px 48px, linear-gradient(90deg, oklch(1 0 0 / 0.018) 1px, transparent 1px) 0 0 / 48px 48px, oklch(0.145 0.016 262)", "display": "flex", "flexWrap": "nowrap", "alignItems": "flex-start"}}>
       {v.bootFx}{v.pageFx}{" "}
@@ -142,13 +145,6 @@ export function View({ v }: { v: any }) {
             </span>
             {" "}
             <span style={{"display": v.L.cardDisp, "alignItems": "center", "gap": "8px"}}>
-              <span style={{"display": "flex", "gap": "4px"}}>
-                {(v.sources || []).map((src: any, _i1: number) => (
-                  <Fragment key={_i1}>
-                    <span title={`${src.name} · ${src.sync}`} style={{"width": "6px", "height": "6px", "borderRadius": "50%", "background": src.dot, "boxShadow": src.glow}} />
-                  </Fragment>
-                ))}
-              </span>
               <span style={{"fontSize": "11.5px", "color": "oklch(0.58 0.015 255)"}}>
                 {v.srcSummary}
               </span>
@@ -522,6 +518,7 @@ export function View({ v }: { v: any }) {
                 </div>
               </section>
             </div>
+            {v.D?.today ? <MonthReviewCard today={v.D.today} /> : null}
             <div style={{"display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(min(100%,280px),1fr))", "gap": "16px", "alignItems": "stretch"}}>
               <UpcomingCard items={v.D?.calendar ?? []} onOpen={v.go.calendar} />
               <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
@@ -646,6 +643,7 @@ export function View({ v }: { v: any }) {
             </div>
             {" "}
             <WeekPlan wk={v.wk} days={v.wkDays || []} />
+            {v.D?.today ? <MonthReviewLink today={v.D.today} /> : null}
             {" "}
           </div>
         </>) : null}
@@ -681,6 +679,7 @@ export function View({ v }: { v: any }) {
             </div>
             {v.D?.training?.bests ? (<PersonalBests pb={v.D.training.bests} />) : null}
             {v.swimOpen ? (<SwimDetail id={v.swimOpen} onClose={v.swimClose} />) : null}
+            {v.runOpen ? (<RunDetail id={v.runOpen} onClose={v.runClose} />) : null}
             <section style={{"borderRadius": "18px", "background": "oklch(0.185 0.018 262 / 0.9)", "border": "1px solid oklch(1 0 0 / 0.07)", "boxShadow": "inset 0 1px 0 oklch(1 0 0 / 0.04)", "padding": "22px", "display": "flex", "flexDirection": "column", "gap": "18px", "minWidth": "0"}}>
               <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "flexWrap": "wrap"}}>
                 <div style={{"fontSize": "14px", "fontWeight": "500", "fontFamily": "'Space Grotesk',system-ui,sans-serif", "letterSpacing": "-0.005em", "color": "oklch(0.96 0.005 250)"}}>
@@ -894,9 +893,16 @@ export function View({ v }: { v: any }) {
                       {" "}
                       {(sr.cells || []).map((ce: any, _i2: number) => (
                         <Fragment key={_i2}>
+                          {ce.b ? (
+                            // The sport's best: name (shortened if needed), then the badge on its right, always visible.
+                            <span style={{"display": "flex", "alignItems": "center", "gap": "8px", "minWidth": "0", "color": ce.c}}>
+                              <span style={{"whiteSpace": "nowrap", "overflow": "hidden", "textOverflow": "ellipsis", "minWidth": "0"}}>{ce.t}</span>
+                              <span title={`Your best: ${ce.b}`} aria-label="Your best" className="best-badge">★<span className="bb-t"> Best</span></span>
+                            </span>
+                          ) : (
                           <span style={{"textAlign": ce.a, "color": ce.c, "whiteSpace": "nowrap", "overflow": "hidden", "textOverflow": "ellipsis"}}>
                             {ce.t}
-                          </span>
+                          </span>)}
                         </Fragment>
                       ))}
                       {" "}
@@ -1172,12 +1178,13 @@ export function View({ v }: { v: any }) {
                 </span>
               </div>
               {" "}
-              <div style={{"display": "grid", "gridTemplateColumns": "repeat(auto-fit,minmax(min(100%,250px),1fr))", "gap": "12px"}}>
+              {/* One row that scrolls sideways (swipe on a phone), instead of wrapping into two rows. */}
+              <div className="kl-row" style={{"display": "flex", "overflowX": "auto", "scrollSnapType": "x mandatory", "gap": "12px", "paddingBottom": "6px", "scrollbarWidth": "thin"}}>
                 {" "}
                 {(v.lifts || []).map((lf: any, _i1: number) => (
                   <Fragment key={_i1}>
                     {" "}
-                    <div style={{"borderRadius": "14px", "border": "1px solid oklch(1 0 0 / 0.07)", "background": "oklch(1 0 0 / 0.02)", "padding": "14px 16px", "display": "flex", "flexDirection": "column", "gap": "10px", "minWidth": "0"}}>
+                    <div style={{"flex": "0 0 min(250px, 78%)", "scrollSnapAlign": "start", "borderRadius": "14px", "border": "1px solid oklch(1 0 0 / 0.07)", "background": "oklch(1 0 0 / 0.02)", "padding": "14px 16px", "display": "flex", "flexDirection": "column", "gap": "10px", "minWidth": "0"}}>
                       {" "}
                       <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "baseline", "gap": "8px"}}>
                         <span style={{"fontSize": "13px", "color": "oklch(0.74 0.015 255)"}}>

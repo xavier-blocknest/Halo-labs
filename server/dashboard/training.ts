@@ -81,7 +81,7 @@ export function trainingSummary(today: string) {
 
   const runs = of('run').filter(a => (a.distanceM ?? 0) >= MI)
   const runsYear = runs.filter(a => a.day.startsWith(year))
-  const runRow = (a: Act) => ({ day: a.day, d: short(a.day), name: a.name, mi: r1(a.distanceM! / MI), pace: pace((a.movingS ?? 0) / (a.distanceM! / MI)), min: Math.round(mins(a)), ft: Math.round((a.elevGainM ?? 0) / FT), hr: a.avgHr ? Math.round(a.avgHr) : null, gear: a.gear ?? '' })
+  const runRow = (a: Act) => ({ id: a.id, runna: a.sources.includes('runna'), day: a.day, d: short(a.day), name: a.name, mi: r1(a.distanceM! / MI), pace: pace((a.movingS ?? 0) / (a.distanceM! / MI)), min: Math.round(mins(a)), ft: Math.round((a.elevGainM ?? 0) / FT), hr: a.avgHr ? Math.round(a.avgHr) : null, gear: a.gear ?? '' })
   const fastest3 = runs.filter(a => a.distanceM! >= 3 * MI && a.movingS).sort((a, b) => a.movingS! / a.distanceM! - b.movingS! / b.distanceM!)[0]
   const monthMi = (ym: string) => r1(sum(runs.filter(a => a.day.startsWith(ym)).map(a => a.distanceM! / MI)))
   const ym = today.slice(0, 7), prevYm = addDays(`${ym}-01`, -1).slice(0, 7)
@@ -91,14 +91,20 @@ export function trainingSummary(today: string) {
   const bestSwim = swims.filter(a => (a.distanceM ?? 0) >= 200 && swimPace(a)).sort((a, b) => swimPace(a)! - swimPace(b)!)[0]
 
   const rides = of('ride').filter(a => (a.distanceM ?? 0) >= MI)
-  const rideRow = (a: Act) => ({ day: a.day, d: short(a.day), name: a.name, mi: r1(a.distanceM! / MI), min: Math.round(mins(a)), mph: a.movingS ? r1(a.distanceM! / MI / (a.movingS / 3600)) : null, ft: Math.round((a.elevGainM ?? 0) / FT), hr: a.avgHr ? Math.round(a.avgHr) : null })
+  const rideRow = (a: Act) => ({ id: a.id, day: a.day, d: short(a.day), name: a.name, mi: r1(a.distanceM! / MI), min: Math.round(mins(a)), mph: a.movingS ? r1(a.distanceM! / MI / (a.movingS / 3600)) : null, ft: Math.round((a.elevGainM ?? 0) / FT), hr: a.avgHr ? Math.round(a.avgHr) : null })
   // Any real ride, including indoor rides with no distance (often WHOOP-only); under 10 minutes is noise.
   const lastRide = of('ride').find(a => mins(a) >= 10 || (a.distanceM ?? 0) >= MI) ?? null
 
   const lifts = of('strength')
   const liftsYear = lifts.filter(a => a.day.startsWith(year)), lifts30 = lifts.filter(a => a.day > addDays(today, -30))
-  const liftRow = (a: Act) => ({ day: a.day, d: short(a.day), name: a.name, min: Math.round(mins(a)), hr: a.avgHr ? Math.round(a.avgHr) : null, mhr: a.maxHr ? Math.round(a.maxHr) : null, strain: a.strain, cal: a.calories, sets: a.sets, lb: a.liftLb })
+  const liftRow = (a: Act) => ({ id: a.id, day: a.day, d: short(a.day), name: a.name, min: Math.round(mins(a)), hr: a.avgHr ? Math.round(a.avgHr) : null, mhr: a.maxHr ? Math.round(a.maxHr) : null, strain: a.strain, cal: a.calories, sets: a.sets, lb: a.liftLb })
 
+  // The best activity per sport, for the "Best" badge on the lists (pinned on top when it's older than the list):
+  // run = fastest pace on 3 mi or more; swim = fastest pace per 100 yd; ride = fastest average speed on 10 mi or more
+  // (any ride over a mile when none is that long); strength = most weight lifted in one session.
+  const mph = (a: Act) => (a.movingS ? a.distanceM! / a.movingS : 0)
+  const bestRide = (rides.some(a => a.distanceM! >= 10 * MI) ? rides.filter(a => a.distanceM! >= 10 * MI) : rides).filter(a => a.movingS).sort((a, b) => mph(b) - mph(a))[0]
+  const bestLift = lifts.filter(a => (a.liftLb ?? 0) > 0).sort((a, b) => b.liftLb! - a.liftLb!)[0]
   const walks = of('walk').filter(a => a.day.startsWith(year)), walks30 = of('walk').filter(a => a.day > addDays(today, -30))
   const walkRow = (a: Act) => ({ day: a.day, d: short(a.day), name: a.name, mi: r1((a.distanceM ?? 0) / MI), min: Math.round(mins(a)), pace: a.distanceM ? pace((a.movingS ?? 0) / (a.distanceM / MI)) : '', ft: Math.round((a.elevGainM ?? 0) / FT), hr: a.avgHr ? Math.round(a.avgHr) : null })
 
@@ -154,11 +160,13 @@ export function trainingSummary(today: string) {
       avgPace: runsYear.length ? pace(sum(runsYear.map(a => a.movingS ?? 0)) / sum(runsYear.map(a => a.distanceM! / MI))) : null,
       fastest3: fastest3 ? { pace: pace(fastest3.movingS! / (fastest3.distanceM! / MI)), d: short(fastest3.day), mi: r1(fastest3.distanceM! / MI) } : null,
       ft: Math.round(sum(runsYear.map(a => (a.elevGainM ?? 0) / FT))), list: runs.slice(0, 12).map(runRow),
+      bestRow: fastest3 ? runRow(fastest3) : null, bestWhy: 'Fastest pace on a run of 3 mi or more',
     },
     swim: {
       n: swims.length, yd: sum(swims.map(a => Math.round((a.distanceM ?? 0) / YD))), first: swims.at(-1)?.day ?? null,
       best: bestSwim ? { pace: pace(swimPace(bestSwim)! * YD * 100), d: short(bestSwim.day), name: bestSwim.name } : null,
       hr: Math.round(avgOf(swims.map(a => a.avgHr)) ?? 0) || null, mhr: Math.max(0, ...swims.map(a => a.maxHr ?? 0)) || null, list: swims.slice(0, 12).map(swimRow),
+      bestRow: bestSwim ? swimRow(bestSwim) : null, bestWhy: 'Fastest pace per 100 yd',
       // FORM technique per swim (newest 8), for the coach: freestyle pace/SWOLF/strokes over clean lengths, main-set drift.
       form: of('swim').filter(a => a.swim).slice(0, 8).map(a => ({ day: a.day, name: a.name, yd: Math.round((a.distanceM ?? 0) / YD), swimMin: Math.round(a.swim!.movingS / 60), restMin: Math.round(a.swim!.restS / 60), excluded: a.swim!.excluded, free: a.swim!.free, mainSet: a.swim!.mainSet })),
     },
@@ -166,6 +174,7 @@ export function trainingSummary(today: string) {
       n: rides.filter(a => a.day.startsWith(year)).length, mi: r1(sum(rides.filter(a => a.day.startsWith(year)).map(a => a.distanceM! / MI))),
       mph: (() => { const r = rides.filter(a => a.day.startsWith(year) && a.movingS); return r.length ? r1(sum(r.map(a => a.distanceM! / MI)) / (sum(r.map(a => a.movingS!)) / 3600)) : null })(),
       ft: Math.round(sum(rides.filter(a => a.day.startsWith(year)).map(a => (a.elevGainM ?? 0) / FT))), list: rides.slice(0, 12).map(rideRow),
+      bestRow: bestRide ? rideRow(bestRide) : null, bestWhy: rides.some(a => a.distanceM! >= 10 * MI) ? 'Fastest average speed on a ride of 10 mi or more' : 'Fastest average speed',
     },
     strength: {
       n: liftsYear.length, h: r1(sum(liftsYear.map(mins)) / 60), n30: lifts30.length, avgMin: Math.round(avgOf(lifts30.map(mins)) ?? 0),
@@ -173,6 +182,7 @@ export function trainingSummary(today: string) {
       strain: (() => { const v = avgOf(lifts30.map(a => a.strain)); return v === null ? null : r1(v) })(),
       cal: Math.round(avgOf(lifts30.map(a => a.calories)) ?? 0) || null,
       list: lifts.slice(0, 12).map(liftRow),
+      bestRow: bestLift ? liftRow(bestLift) : null, bestWhy: 'Most weight lifted in one session',
     },
     walk: {
       n: walks.length, mi: r1(sum(walks.map(a => (a.distanceM ?? 0) / MI))), perDay30: r1(sum(walks30.map(a => (a.distanceM ?? 0) / MI)) / 30),

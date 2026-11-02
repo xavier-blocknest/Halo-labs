@@ -78,6 +78,11 @@ coach read it. That's your call; the alternative is to leave Strava disconnected
 - **FORM swim goggles**: upload a swim's CSV export (FORM app → swim → Export). Swims then come from FORM, length by
   length; tap a swim on Training → Swim for sets, strokes, SWOLF and how the main set held up. Lengths the goggles
   misread (impossibly fast, or no strokes counted) still count toward distance but are left out of pace and SWOLF.
+- **Month in review**: on the 1st of each month, last month's highlights across all your data (training, personal
+  bests, lifting, recovery and sleep, body and food, tests, roadmap), played like a story, each number against the month
+  before. Overview (first week of the month) and Week page; a notification opens it. Finished months only.
+- **Runs**: tap any run in Training → Run for its own view: heart rate and zones, and for runs tracked by Runna the plan
+  workout and type, weather, mile splits, route and place. Each sport's best activity has a ★ Best badge.
 - **Coach**: Settings → Coach: keep the built-in **Coach** or **write your own** personality. Settings → **Coach instructions** sets
   standing instructions for whichever coach you use ("keep answers short", "paces in min/km", "focus on my swim"). Tell it things to
   remember ("remember I'm allergic to shellfish"); they show up under Settings → Coach memory.
@@ -96,7 +101,7 @@ The Mac address (`localhost`) only works on the Mac. For the iPhone (and the upl
 
 It's private to your Tailscale account: nobody else can reach it. The Mac has to be awake for the phone to reach it.
 
-**Notifications** (Settings → Notifications): today's Hard / Easy / Rest call once WHOOP has your morning recovery,
+**Notifications** (Settings → Notifications): today's Hard / Easy / Rest call once WHOOP has your morning recovery, "Review your month now!" on the 1st,
 calendar reminders (48 hours, 24 hours and 30 minutes before; all-day items at 8 AM two days and one day before), and
 a heads-up when WHOOP or Strava keeps failing to sync. Each has an on/off switch. On the iPhone, open the Tailscale
 address in Safari, tap Share → **Add to Home Screen**, open Halo Labs from that icon, then **Turn on for this

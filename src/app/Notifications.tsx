@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
 type Device = { id: string; label: string; endpoint: string; created: string; lastSent: string | null; service: string }
-type Kind = 'call' | 'problems' | 'calendar'
-type Status = { publicKey: string; prefs: { call: boolean; problems: boolean; calendar: boolean }; devices: Device[] }
+type Kind = 'call' | 'problems' | 'calendar' | 'review'
+type Status = { publicKey: string; prefs: Record<Kind, boolean>; devices: Device[] }
 
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'never')
 const supported = () => typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
@@ -13,6 +13,7 @@ const b64 = (s: string) => { const p = (s + '='.repeat((4 - (s.length % 4)) % 4)
 const KINDS: { k: Kind; name: string; what: string }[] = [
   { k: 'call', name: "Today's call", what: 'Hard, Easy or Rest, once a day when WHOOP has your recovery (4 AM–2 PM)' },
   { k: 'calendar', name: 'Calendar', what: '48 hours, 24 hours and 30 minutes before each event (all-day items: 8 AM two days and one day before)' },
+  { k: 'review', name: 'Month in review', what: 'Review your month now! On the 1st, from 8 AM, once last month is over; tap to open it' },
   { k: 'problems', name: 'Sync problems', what: 'WHOOP or Strava failing 3 times in a row or needing you to reconnect, and when it recovers' },
 ]
 

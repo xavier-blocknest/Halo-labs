@@ -29,16 +29,17 @@ const CSS = `
   .pb-dots { display: flex; }
 }`
 type Sport = keyof typeof C
+const TECH = 'From FORM: clean freestyle lengths only, swims with 200 yd+ of freestyle'
 
 function New({ c }: { c: string }) {
   return <span style={{ fontSize: '8.5px', lineHeight: 1.3, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'oklch(0.18 0.03 230)', background: c, borderRadius: '999px', padding: '1px 5px', boxShadow: `0 0 8px ${c}` }}>New</span>
 }
 
 /** A sport tile: icon + name, the headline best, then `children`. */
-function Tile({ sport, title, count, hero, heroLabel, children, empty }: { sport: Sport; title: string; count: number; hero: P | null; heroLabel: string; children?: ReactNode; empty: string }) {
+function Tile({ sport, title, count, hero, heroLabel, children, empty, maxH }: { sport: Sport; title: string; count: number; hero: P | null; heroLabel: string; children?: ReactNode; empty: string; maxH?: number }) {
   const c = C[sport]
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0, padding: '18px', borderRadius: '16px',
+    <div style={{ position: 'relative', overflow: maxH ? 'auto' : 'hidden', maxHeight: maxH ? `${maxH}px` : undefined, scrollbarWidth: 'thin', display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0, padding: '18px', borderRadius: '16px',
       background: `radial-gradient(260px 140px at 100% 0%, ${c.replace(')', ' / 0.16)')}, transparent 70%), oklch(1 0 0 / 0.025)`, border: `1px solid ${c.replace(')', ' / 0.22)')}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <span style={{ width: '34px', height: '34px', flex: 'none', borderRadius: '10px', display: 'grid', placeItems: 'center', background: c.replace(')', ' / 0.14)'), color: c, boxShadow: `inset 0 0 0 1px ${c.replace(')', ' / 0.3)')}` }}>
@@ -64,19 +65,20 @@ function Tile({ sport, title, count, hero, heroLabel, children, empty }: { sport
 }
 
 /** Smaller bests under the headline, as chips. */
-function Chips({ sport, items }: { sport: Sport; items: { k: string; b: P | null }[] }) {
+/** `compact`: always two across, one-line details (the Swim tile has many bests and a height cap). */
+function Chips({ sport, items, compact }: { sport: Sport; items: { k: string; b: P | null; note?: string }[]; compact?: boolean }) {
   const shown = items.filter(i => i.b)
   if (!shown.length) return null
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: '8px' }}>
-      {shown.map(({ k, b }) => (
-        <div key={k} title={`${b.name} · ${b.d}`} style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '10px 12px', borderRadius: '12px', background: 'oklch(1 0 0 / 0.03)', border: `1px solid ${LINE}` }}>
+    <div style={{ display: 'grid', gridTemplateColumns: compact ? 'repeat(2,minmax(0,1fr))' : 'repeat(auto-fit,minmax(120px,1fr))', gap: '8px' }}>
+      {shown.map(({ k, b, note }) => (
+        <div key={k} title={`${b.sub ? b.sub + ' · ' : ''}${b.name} · ${b.d}${note ? '\n' + note : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '10px 12px', borderRadius: '12px', background: 'oklch(1 0 0 / 0.03)', border: `1px solid ${LINE}` }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: T3 }}>{k}{b.fresh ? <New c={C[sport]} /> : null}</span>
           <span style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             <span style={{ fontSize: '19px', fontFamily: HEAD, color: T1, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{b.v}</span>
             <span style={{ fontSize: '11.5px', color: C[sport] }}>{b.u}</span>
           </span>
-          <span style={{ fontSize: '11px', color: T3 }}>{b.sub ? `${b.sub} · ` : ''}{b.d}</span>
+          <span style={{ fontSize: '11px', color: T3, ...(compact ? { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}>{compact ? b.d.replace(/, \d{4}$/, '') : `${b.sub ? `${b.sub} · ` : ''}${b.d}`}</span>
         </div>
       ))}
     </div>
@@ -135,8 +137,9 @@ export function PersonalBests({ pb }: { pb: P }) {
           {ladder.length ? <Bars sport="run" rows={ladder} /> : null}
           {run.pending ? <span style={{ fontSize: '11.5px', color: T3 }}>Getting best efforts from Strava: {run.pending} run{run.pending === 1 ? '' : 's'} to go. They fill in over the next syncs.</span> : null}
         </Tile>
-        <Tile sport="swim" title="Swim" count={count([swim.longest, swim.fastest])} hero={swim.longest} heroLabel="Longest swim" empty="No swims with distance yet.">
-          <Chips sport="swim" items={[{ k: 'Fastest pace', b: swim.fastest }]} />
+        <Tile sport="swim" title="Swim" count={count([swim.longest, swim.fastest, swim.swolf, swim.dps, swim.strokes, swim.longSet, swim.fastSet])} hero={swim.longest} heroLabel="Longest swim" empty="No swims with distance yet." maxH={485}>
+          <Chips sport="swim" items={[{ k: 'Fastest pace', b: swim.fastest }, { k: 'Fastest set', b: swim.fastSet, note: TECH }, { k: 'Best SWOLF', b: swim.swolf, note: TECH }, { k: 'Distance per stroke', b: swim.dps, note: TECH },
+            { k: 'Fewest strokes', b: swim.strokes, note: TECH }, { k: 'Longest set', b: swim.longSet, note: 'From FORM' }]} compact />
         </Tile>
         <Tile sport="ride" title="Ride" count={count([ride.longest, ride.fastest, ride.climb])} hero={ride.longest} heroLabel="Longest ride" empty="No rides with distance yet.">
           <Chips sport="ride" items={[{ k: 'Fastest average', b: ride.fastest }, { k: 'Most climbing', b: ride.climb }]} />

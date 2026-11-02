@@ -8,6 +8,17 @@ const row = (t: string, label: RegExp) => {
   return m ? m.slice(1, 5).map(num) : null
 }
 
+/** STAGE AVERAGES rows: stage, time, HR, speed, VO2 mL/min, VO2 mL/kg/min, VE/VO2, VE/VCO2, RER, CHO %, Fat %,
+ *  CHO g/min, Fat g/min, CHO cal/min, Fat cal/min, cal/min, cal/hr. Only that table (the interval data has no stage). */
+function stages(t: string) {
+  const at = t.indexOf('STAGE AVERAGES'), end = t.indexOf('EFFECTIVE FAT BURN', at)
+  if (at < 0) return []
+  const block = t.slice(at, end > at ? end : at + 4000)
+  const n = '([\\d.,]+)'
+  const re = new RegExp(`^\\s*(\\d{1,2})\\s+(\\d+:\\d{2})\\s+(\\d+)\\s+${n}\\s+${n}\\s+${n}\\s+${n}\\s+${n}\\s+${n}\\s+${n}%\\s+${n}%\\s+${n}\\s+${n}\\s+${n}\\s+${n}\\s+${n}\\s+(\\d+)\\s*$`, 'gm')
+  return [...block.matchAll(re)].map(m => ({ n: Number(m[1]), time: m[2], hr: Number(m[3]), mph: num(m[4])!, vo2: num(m[6])!, rer: num(m[9])!, choPct: num(m[10])!, fatPct: num(m[11])!, kcalHr: Number(m[17]) }))
+}
+
 export const vo2Report: Importer = {
   id: 'vo2-max-pdf', source: 'vo2', label: 'VO₂ max test (PDF)',
   detect: f => !!f.pdfText && /VO2 MAX TEST/.test(f.pdfText) && /HEART RATE BASED TRAINING|ZONE 2/.test(f.pdfText),
@@ -31,6 +42,7 @@ export const vo2Report: Importer = {
       anaerobicThreshold: hr ? { hr: hr[2], vo2: vo2?.[2] ?? null } : null,
       zones,
       recovery: { peak: rec('Peak'), after1m: rec('1 Minute'), after2m: rec('2 Minutes') },
+      stages: stages(t),
     }
     return [{ source: 'vo2', kind: 'test', id: day, day, data }]
   },

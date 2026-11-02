@@ -41,7 +41,7 @@ function chatProfile(D) {
     ? `Main goal (a measurable target, not a race; everything serves it): ${p.goal.target.sentence}${p.goal.objective ? ' Why: ' + p.goal.objective : ''}` +
       (p.goal.target.testOnly ? ` This number only changes when a new test or an entered value comes in${p.goal.target.current ? ` (last one ${p.goal.target.current.ageDays} days ago)` : ''}: between tests judge progress by what moves with it (for VO₂ max: Zone 2 pace at the same heart rate, resting heart rate, HRV), never estimate a new value, and suggest a retest when one is due (every 8–12 weeks).` : '')
     : `Goal: ${p.goal.event}, ${p.goal.dateLabel}, ${p.goal.location} (${p.goal.daysTo} days)${p.goal.registered ? `, officially registered on ${p.goal.registered}` : ''}. ${p.goal.objective}`) +
-    ` Upcoming: ${p.milestones.filter(m => m.status !== 'completed').slice(0, 5).map(m => `${m.name} (${m.when}, ${m.status}${m.target ? '; target: ' + m.target.sentence : ''})`).join('; ')}. Weekly schedule: ${Object.entries(p.schedule).map(([d, x]) => `${d.slice(0, 3)} ${x.join(' + ')}`).join('; ')}.` + (p.deload?.active ? ` Deload week ${p.deload.start} to ${p.deload.end} at ${Math.round(p.deload.fraction * 100)}% weights.` : '') + (p.hard75 ? ` Sustainable 75 Hard: ${p.hard75.status === 'in_progress' ? `day ${p.hard75.day} of ${p.hard75.days}` : p.hard75.status}, ${p.hard75.start} to ${p.hard75.end}; daily rules: ${p.hard75.rules.join('; ')}. He tracks these in another app (no export): assume every day was completed unless he says otherwise; don't ask him to confirm them.` : '') + ` Unknowns: ${p.unknowns.join('; ') || 'none'}.` + (p.answered?.length ? ` Settled (don't ask again): ${p.answered.map(x => `${x.q}: ${x.a}`).join('; ')}.` : ''))
+    ` Upcoming: ${p.milestones.filter(m => m.status !== 'completed').slice(0, 5).map(m => `${m.name} (${m.when}, ${m.status}${m.target ? '; target: ' + m.target.sentence : ''})`).join('; ')}. Weekly schedule: ${Object.entries(p.schedule).map(([d, x]) => `${d.slice(0, 3)} ${x.join(' + ')}`).join('; ')}.` + (p.deload?.active ? ` Deload week ${p.deload.start} to ${p.deload.end} at ${Math.round(p.deload.fraction * 100)}% weights.` : '') + (p.hard75 ? ` Sustainable 75 Hard: ${p.hard75.status === 'in_progress' ? `day ${p.hard75.day} of ${p.hard75.days}` : p.hard75.status}, ${p.hard75.start} to ${p.hard75.end} (if he says he missed a day or is starting over, restart it with the restart_75_hard tool); daily rules: ${p.hard75.rules.join('; ')}. He tracks these in another app (no export): assume every day was completed unless he says otherwise; don't ask him to confirm them.` : '') + ` Unknowns: ${p.unknowns.join('; ') || 'none'}.` + (p.answered?.length ? ` Settled (don't ask again): ${p.answered.map(x => `${x.q}: ${x.a}`).join('; ')}.` : ''))
   const wp = D.weekPlans
   if (wp) {
     const showWeek = (label, start, w) => {
@@ -625,6 +625,7 @@ function sportTable(S, phone) {
 
 // ---- Training ------------------------------------------------------------------------------------
 const SWIMC = 'oklch(0.76 0.13 250)' // swim blue (PersonalBests), marks swims that open the swim view
+const RUNC = 'oklch(0.82 0.13 210)' // run cyan (PersonalBests), marks runs that open the run view
 function training() {
   const t = this.props.D.training
   if (!t) return { weeks: [], tMetricNote: 'No Strava data yet', tMetric: [], heat: [], tod: [], gear: [], sportOpts: [], sportTiles: [], sportChartLabel: '', sportBars: [], sportGrid: '1fr', sportCols: [], sportRows: [] }
@@ -637,34 +638,40 @@ function training() {
   const tod = ['Morning · before 11', 'Midday · 11–3', 'Evening · 3–8', 'Night · after 8'].map((name, i) => ({ name, done: t.tod[i], goal: tt + ' sessions', pct: Math.round(t.tod[i] / tt * 100) + '%' }))
   const gear = t.gear.map(g => ({ name: g.name, mi: n1(g.mi), sub: (g.kind === 'bike' ? 'Bike' : 'Shoes') + ' · ' + g.n + ' activities' + (g.retired ? ' · retired' : ''), note: g.kind === 'shoe' ? (g.mi > 300 ? 'Near replacement' : Math.round(400 - g.mi) + ' mi to 400') : '', nc: g.kind === 'shoe' && g.mi > 300 ? W : T3 }))
   const sp = this.state.sport, tl = (k, v, u, note, c) => ({ k, v, u, note, nc: T3, c: c || T1, go: null, cur: 'default' })
-  const cell = (x, a, c) => ({ t: x == null ? '—' : String(x), a: a || 'left', c: c || T1 })
+  const cell = (x, a, c, b) => ({ t: x == null ? '—' : String(x), a: a || 'left', c: c || T1, b: b || null })
+  // The sport's best activity gets a badge; when it's older than the list it's pinned on top (replacing the oldest row).
+  const pin = (list, best, n) => { const L = list.slice(0, n); return !best || L.some(x => x.id === best.id) ? L : [best, ...L.slice(0, n - 1)] }
+  const bestOf = (s, x) => (s.bestRow && x.id === s.bestRow.id ? s.bestWhy : null)
   const lastBars = (list, key, f) => { const L = list.slice(0, 12).reverse(), mxx = Math.max(...L.map(x => +x[key] || 0), 0.1)
     return L.map((x, i) => ({ v: f(x), l: x.d, h: Math.max(4, Math.round((+x[key] || 0) / mxx * 84)) + '%', c: i === L.length - 1 ? A : AD, glow: i === L.length - 1 ? AGLOW : 'none' })) }
   let S
   if (sp === 'swim') { const s = t.swim; S = { tiles: [tl('Swims', s.n, '', s.first ? 'Since ' + fmtDay(s.first) : t.year), tl('Distance', s.yd.toLocaleString(), 'yd', t.year), tl('Longest', t.longest.swim ? t.longest.swim.v.toLocaleString() : '—', 'yd', t.longest.swim ? fmtDay(t.longest.swim.day) : ''), tl('Best pace', s.best?.pace ?? '—', '/100yd', s.best ? s.best.d : ''), tl('Avg heart rate', s.hr ?? '—', 'bpm', s.mhr ? 'Max ' + s.mhr : ''), tl('Swims', s.list.length, '', 'Shown below')],
     label: 'Yards per swim', bars: lastBars(s.list, 'yd', x => x.yd.toLocaleString()), grid: '50px minmax(0,1.4fr) 50px 52px 62px 48px 48px', cols: [['Date'], ['Swim'], ['Yards', 'right'], ['Time', 'right'], ['/100yd', 'right'], ['Avg HR', 'right'], ['Max HR', 'right']],
     // Swims with FORM lengths open the swim view (src/app/SwimDetail.tsx); their names read as links.
-    rows: s.list.map(x => [cell(x.d, 0, T3), cell(x.detail ? x.name + ' ›' : x.name, 0, x.detail ? SWIMC : T1), cell(x.yd.toLocaleString(), 'right'), cell(x.min + ' min', 'right', T2), cell(x.pace, 'right'), cell(x.hr, 'right', T2), cell(x.mhr, 'right', T2)]),
-    go: s.list.map(x => (x.detail ? () => this.setState({ swimOpen: x.id }) : null)) } }
+    rows: pin(s.list, s.bestRow, 12).map(x => [cell(x.d, 0, T3), cell(x.detail ? x.name + ' ›' : x.name, 0, x.detail ? SWIMC : T1, bestOf(s, x)), cell(x.yd.toLocaleString(), 'right'), cell(x.min + ' min', 'right', T2), cell(x.pace, 'right'), cell(x.hr, 'right', T2), cell(x.mhr, 'right', T2)]),
+    go: pin(s.list, s.bestRow, 12).map(x => (x.detail ? () => this.setState({ swimOpen: x.id }) : null)) } }
   else if (sp === 'bike') { const s = t.ride, lr = t.kpis.lastRide; S = { tiles: [tl('Rides', s.n, '', t.year + ' · over 1 mile'), tl('Distance', s.mi, 'mi', t.year), tl('Average speed', s.mph ?? '—', 'mph', ''), tl('Longest', t.longest.ride?.v ?? '—', 'mi', t.longest.ride ? fmtDay(t.longest.ride.day, { month: 'short', day: 'numeric', year: 'numeric' }) : ''), tl('Elevation', s.ft.toLocaleString(), 'ft', 'Total gain'), tl('Last ride', lr ? fmtDay(lr.day) : '—', '', lr ? lr.daysAgo + ' days ago' : '', lr && lr.daysAgo > 14 ? R : T1)],
     label: 'Miles per ride · last 12 rides', bars: lastBars(s.list, 'mi', x => x.mi), grid: '50px minmax(0,1.6fr) 50px 56px 44px 52px 52px', cols: [['Date'], ['Ride'], ['Miles', 'right'], ['Time', 'right'], ['mph', 'right'], ['Elev', 'right'], ['Avg HR', 'right']],
-    rows: s.list.slice(0, 10).map(x => [cell(x.d, 0, T3), cell(x.name), cell(x.mi, 'right'), cell(x.min + ' min', 'right', T2), cell(x.mph, 'right'), cell(x.ft, 'right', T2), cell(x.hr, 'right', T2)]) } }
+    rows: pin(s.list, s.bestRow, 10).map(x => [cell(x.d, 0, T3), cell(x.name, 0, T1, bestOf(s, x)), cell(x.mi, 'right'), cell(x.min + ' min', 'right', T2), cell(x.mph, 'right'), cell(x.ft, 'right', T2), cell(x.hr, 'right', T2)]) } }
   else if (sp === 'str') { const s = t.strength; S = { tiles: [tl('Sessions', s.n, '', t.year), tl('Time', s.h, 'h', t.year), tl('Last 30 days', s.n30, 'sessions', s.avgMin + ' min average'), tl('Avg heart rate', s.hr ?? '—', 'bpm', 'Last 30 days'), tl('WHOOP strain', s.strain ?? '—', '', 'Avg per session'), tl('Calories', s.cal ?? '—', 'kcal', 'Avg per session')],
     label: 'Strength sessions per week', bars: t.weeks.map((w, i) => ({ v: String(w.strN), l: w.l, h: Math.max(4, Math.round(w.strN / Math.max(1, ...t.weeks.map(x => x.strN)) * 84)) + '%', c: i === t.weeks.length - 2 ? A : AD, glow: 'none' })),
     grid: '50px minmax(0,1.6fr) 72px 56px 52px 52px 48px 48px', cols: [['Date'], ['Session'], ['Lifted', 'right'], ['Time', 'right'], ['Avg HR', 'right'], ['Max HR', 'right'], ['Strain', 'right'], ['kcal', 'right']],
-    rows: s.list.map(x => [cell(x.d, 0, T3), cell(x.name), cell(x.lb == null ? null : x.lb.toLocaleString() + ' lb', 'right'), cell(x.min + ' min', 'right', T2), cell(x.hr, 'right'), cell(x.mhr, 'right', T2), cell(x.strain == null ? null : n1(x.strain), 'right'), cell(x.cal == null ? null : Math.round(x.cal), 'right', T2)]) } }
+    rows: pin(s.list, s.bestRow, 12).map(x => [cell(x.d, 0, T3), cell(x.name, 0, T1, bestOf(s, x)), cell(x.lb == null ? null : x.lb.toLocaleString() + ' lb', 'right'), cell(x.min + ' min', 'right', T2), cell(x.hr, 'right'), cell(x.mhr, 'right', T2), cell(x.strain == null ? null : n1(x.strain), 'right'), cell(x.cal == null ? null : Math.round(x.cal), 'right', T2)]) } }
   else if (sp === 'walk') { const s = t.walk; S = { tiles: [tl('Walks', s.n, '', t.year), tl('Distance', s.mi, 'mi', s.perDay30 + ' mi/day last 30'), tl('Time', s.h, 'h', t.year), tl('Elevation', s.ft.toLocaleString(), 'ft', 'Total gain'), tl('Avg heart rate', s.hr ?? '—', 'bpm', ''), tl('Calories', s.cal ? s.cal.toLocaleString() : '—', 'kcal', t.year)],
     label: 'Walking miles per week', bars: t.weeks.map((w, i) => ({ v: n1(w.walkMi), l: w.l, h: Math.max(4, Math.round(w.walkMi / Math.max(1, ...t.weeks.map(x => x.walkMi)) * 84)) + '%', c: i === t.weeks.length - 2 ? A : AD, glow: 'none' })),
     grid: '50px minmax(0,1.6fr) 48px 56px 50px 52px 52px', cols: [['Date'], ['Walk'], ['Miles', 'right'], ['Time', 'right'], ['Pace', 'right'], ['Elev', 'right'], ['Avg HR', 'right']],
     rows: s.list.map(x => [cell(x.d, 0, T3), cell(x.name), cell(x.mi, 'right'), cell(x.min + ' min', 'right', T2), cell(x.pace, 'right'), cell(x.ft, 'right', T2), cell(x.hr, 'right', T2)]) } }
   else { const s = t.run; S = { tiles: [tl('Runs', s.n, '', t.year + ' · over 1 mile'), tl('Distance', s.mi, 'mi', `${fmtDay(t.today ?? this.props.D.today, { month: 'short' })} ${t.kpis.runMonth.mi} · last month ${t.kpis.runMonth.prevMi}`), tl('Average pace', s.avgPace ?? '—', '/mi', 'Moving time'), tl('Fastest 3 mi+', s.fastest3?.pace ?? '—', '/mi', s.fastest3 ? s.fastest3.d + ' · ' + s.fastest3.mi + ' mi' : ''), tl('Longest', t.longest.run?.v ?? '—', 'mi', t.longest.run ? fmtDay(t.longest.run.day) : ''), tl('Elevation', s.ft.toLocaleString(), 'ft', 'Total gain')],
     label: 'Distance per run (mi) · last 12 runs', bars: lastBars(s.list, 'mi', x => x.mi), grid: '50px minmax(0,1.6fr) 44px 48px 54px 44px 44px 140px', cols: [['Date'], ['Run'], ['Miles', 'right'], ['Pace', 'right'], ['Time', 'right'], ['Elev', 'right'], ['HR', 'right'], ['Shoes', 'right']],
-    rows: s.list.slice(0, 10).map(x => [cell(x.d, 0, T3), cell(x.name), cell(x.mi, 'right'), cell(x.pace, 'right'), cell(x.min + ' min', 'right', T2), cell(x.ft, 'right', T2), cell(x.hr, 'right', T2), cell(x.gear, 'right', T2)]) } }
+    // Every run opens the run view (src/app/RunDetail.tsx); its name reads as a link.
+    go: pin(s.list, s.bestRow, 10).map(x => () => this.setState({ runOpen: x.id })),
+    rows: pin(s.list, s.bestRow, 10).map(x => [cell(x.d, 0, T3), cell(x.name + ' ›', 0, RUNC, bestOf(s, x)), cell(x.mi, 'right'), cell(x.pace, 'right'), cell(x.min + ' min', 'right', T2), cell(x.ft, 'right', T2), cell(x.hr, 'right', T2), cell(x.gear, 'right', T2)]) } }
   return {
     weeks, tMetricNote: MET[m][1] + ' Highlighted bar is the last full week. Each sport from the app chosen in Settings → Activity sources (by default swims from FORM, else Strava; runs from Strava; lifts from FitnessAI; everything else from WHOOP); heart rate and strain from WHOOP. Each workout counts once.', tMetric: this.seg(Object.keys(MET).map(k => [k, MET[k][0]]), m, id => this.setState({ tMet: id })),
     heat, tod, gear, sportOpts: this.seg([['run', 'Run'], ['swim', 'Swim'], ['bike', 'Bike'], ['str', 'Strength'], ['walk', 'Walk']], sp, id => this.setState({ sport: id })),
     sportTiles: S.tiles, sportChartLabel: S.label, sportBars: S.bars, ...sportTable(S, (this.state.vw ?? 1280) < 600),
     swimOpen: this.state.swimOpen ?? null, swimClose: this._swimClose ??= () => this.setState({ swimOpen: null }),
+    runOpen: this.state.runOpen ?? null, runClose: this._runClose ??= () => this.setState({ runOpen: null }),
   }
 }
 
@@ -766,31 +773,51 @@ function blood() {
   const flt = this.state.bFilter, lab = id => draws.find(d => d.id === id)?.label ?? ''
   const trend = (m) => { const ps = ids.map(id => parseV(m.values[id])), mx = Math.max(...ps.filter(Boolean).map(p => p.v ?? 0), 0.0001)
     return ids.map((id, i) => { const p = ps[i]; return { h: p && p.v != null ? Math.max(14, p.v / mx * 100).toFixed(0) + '%' : '8%', c: !p ? 'oklch(1 0 0 / 0.08)' : id === sel ? A : id === cmp ? 'oklch(0.82 0.13 210 / 0.55)' : 'oklch(0.82 0.13 210 / 0.22)' } }) }
-  const rows = T.markers.map(m => {
+  const allRows = T.markers.map(m => {
     const s = parseV(m.values[sel]), c = cmp ? parseV(m.values[cmp]) : null
     let d = '', dc = T3
-    if (s?.v != null && c?.v != null) { const pct = (s.v - c.v) / Math.abs(c.v || 1) * 100; if (Math.abs(pct) < 3) d = '→'; else { d = (s.v > c.v ? '↑ ' : '↓ ') + Math.abs(Math.round(pct)) + '%'; dc = Math.abs(pct) >= 20 ? A : T2 } }
+    // A result reported as "<30" or ">1000" is a detection limit, not a measurement: there's no change to work out.
+    if (/^[<>]/.test(s?.t ?? '') || /^[<>]/.test(c?.t ?? '')) { if (s && c) d = '—' }
+    else if (s?.v != null && c?.v != null) { const pct = (s.v - c.v) / Math.abs(c.v || 1) * 100; if (Math.abs(pct) < 3) d = '→'; else { d = (s.v > c.v ? '↑ ' : '↓ ') + Math.abs(Math.round(pct)) + '%'
+      // Green when the later of the two draws is better, red when it's worse, grey when neither is clear.
+      const [older, newer] = sel > cmp ? [c.v, s.v] : [s.v, c.v], g = labVerdict(m, older, newer); dc = g > 0 ? G : g < 0 ? R : T2 } }
     const draw = draws.find(x => x.id === sel)
     return { panel: m.group, flag: s?.f, name: m.name, u: m.unit ?? '', ref: m.range ?? '',
       v: s ? s.t : (draw?.status === 'PARTIAL' ? 'Pending' : 'Not tested'), c: s ? flagC(s.f) : T3,
       cv: cmp ? (c ? c.t : '—') : '', cc: c ? (c.f ? flagC(c.f) : T2) : T3, d, dc,
       p: s?.v != null ? posOf(s.v, m.low, m.high) : '0%', po: s?.v != null ? 1 : 0, pc: c?.v != null ? posOf(c.v, m.low, m.high) : '0%', pco: c?.v != null ? 1 : 0,
-      dot: s ? dotC(s.f) : T3, trend: trend(m) } })
+      dot: s ? dotC(s.f) : T3, trend: trend(m), both: !!(s && c) } })
+  // Comparing two draws: only the markers both reports have (an untested one has nothing to compare against).
+  const rows = cmp ? allRows.filter(r => r.both) : allRows
   const order = ['Lipids', 'Iron & blood', 'Metabolic', 'Liver & kidney', 'Hormones', 'Inflammation & vitamins', 'Other']
   // Default view: only the out-of-range markers (the full list is long); everything when nothing is flagged.
   const onlyFlagged = flt === 'flagged' && rows.some(r => r.flag)
   const shown = (onlyFlagged ? rows.filter(r => r.flag) : rows).sort((a, b) => order.indexOf(a.panel) - order.indexOf(b.panel))
   const panels = []
   shown.forEach(r => { let p = panels.find(x => x.name === r.panel); if (!p) { p = { name: r.panel, rows: [] }; panels.push(p) } p.rows.push(r) })
-  const flagged = rows.filter(r => r.flag), tested = rows.filter(r => r.po).length
+  const flagged = rows.filter(r => r.flag), tested = rows.filter(r => r.po).length, allFlagged = allRows.filter(r => r.flag)
   return {
-    bNodes: this.nodes(draws.map(d => [d.id, d.label, d.year]), sel, cmp, id => this.setState(s => ({ bDate: id, bCmp: s.bCmp === id ? null : s.bCmp }))),
+    bNodes: this.nodes(draws.map(d => [d.id, d.dayL ?? d.label, d.year]), sel, cmp, id => this.setState(s => ({ bDate: id, bCmp: s.bCmp === id ? null : s.bCmp }))),
     bCmpOpts: this.seg([['none', 'None']].concat(draws.filter(d => d.id !== sel).map(d => [d.id, d.label])), cmp || 'none', id => this.setState({ bCmp: id === 'none' ? null : id })),
     bFilterOpts: flagged.length ? this.seg([['flagged', `Out of range · ${flagged.length}`], ['all', `All · ${tested}`]], flt, id => this.setState({ bFilter: id })) : [],
     bMore: onlyFlagged ? { label: `Show all ${tested} markers`, go: () => this.setState({ bFilter: 'all' }) } : flt === 'all' && flagged.length ? { label: 'Show only out of range', go: () => this.setState({ bFilter: 'flagged' }) } : null,
     bPanels: panels, bSelLabel: lab(sel), bCmpLabel: cmp ? lab(cmp) : '', bChgLabel: cmp ? 'Change' : '',
-    bSummary: flagged.length + ' of ' + tested + ' out of range on ' + lab(sel), bFlagged: flagged.map(r => ({ name: r.name, v: r.v, c: dotC(r.flag) })),
+    bSummary: allFlagged.length + ' of ' + allRows.filter(r => r.po).length + ' out of range on ' + lab(sel) + (cmp ? ` · ${rows.length} marker${rows.length === 1 ? '' : 's'} in both reports` : ''),
+    bFlagged: allFlagged.map(r => ({ name: r.name, v: r.v, c: dotC(r.flag) })),
   }
+}
+
+// Is a lab change an improvement? Moving into (or toward) the reference range is better and moving away is worse; with
+// both values in range, the markers where lower or higher is plainly better decide; anything else is neutral (0).
+const LAB_LOWER = /^(Glucose|Cholesterol, Total|Triglycerides|LDL|Chol\/Hdlc|Non HDL|Apolipoprotein B|Insulin|Lipoprotein \(A\)|HS CRP|Homocysteine|Hemoglobin A1c)/i
+const LAB_HIGHER = /^HDL Cholesterol/i
+function labVerdict(m, older, newer) {
+  const off = v => (m.low != null && v < m.low ? m.low - v : m.high != null && v > m.high ? v - m.high : 0)
+  const a = off(older), b = off(newer)
+  if (a !== b) return b < a ? 1 : -1
+  if (LAB_LOWER.test(m.name)) return newer < older ? 1 : -1
+  if (LAB_HIGHER.test(m.name)) return newer > older ? 1 : -1
+  return 0
 }
 
 function vo2Data() {
@@ -802,7 +829,9 @@ function vo2Data() {
     vTiles: [tile('VO₂ max', v.vo2max ?? '—', 'ml/kg/min', ''), tile('Max heart rate', v.maxHr ?? '—', 'bpm', ''),
       tile('Anaerobic threshold', v.anaerobicThreshold?.hr ?? '—', 'bpm', v.anaerobicThreshold?.vo2 ? v.anaerobicThreshold.vo2 + ' ml/kg/min' : ''),
       tile('Aerobic threshold', v.aerobicThreshold?.hr ?? '—', 'bpm', v.aerobicThreshold?.vo2 ? v.aerobicThreshold.vo2 + ' ml/kg/min' : ''), tile('Resting', v.restingHr ?? '—', 'bpm', 'Start of test')],
-    vStages: [],
+    // Fuel mix by stage (the report's stage averages): bar height = VO₂ at the stage, split carbs (top) / fat (bottom).
+    vStages: (() => { const st = v.stages ?? [], mx = Math.max(1, ...st.map(x => x.vo2))
+      return st.map(x => ({ fatPct: Math.round(x.fatPct) + '% fat', h: Math.max(18, Math.round(x.vo2 / mx * 100)) + '%', cho: x.choPct, fat: x.fatPct, hr: x.hr + ' bpm' })) })(),
     zones: v.zones.map((z, i) => { const a = z.lowHr ?? lo, b = z.highHr ?? hi
       return { z: z.zone, hr: z.lowHr == null ? '< ' + z.highHr : z.highHr == null ? '> ' + z.lowHr : z.lowHr + '–' + z.highHr, o: (0.3 + i * 0.175).toFixed(2), l: ((a - lo) / (hi - lo) * 100).toFixed(1) + '%', w: ((b - a) / (hi - lo) * 100).toFixed(1) + '%' } }),
     vNotes: v.recovery?.peak ? [noteRow(A, `Heart-rate recovery: ${v.recovery.peak} at peak, ${v.recovery.after1m} after 1 minute, ${v.recovery.after2m} after 2.`)] : [],

@@ -192,3 +192,8 @@ html.upd-on aside[style*="sticky"] { top: calc(var(--upd-h) + env(safe-area-inse
 .dp .act-src-seg button { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 7px; border: 0; cursor: pointer; background: transparent; color: var(--t2); }
 .dp .act-src-seg button.on { background: oklch(0.82 0.13 210 / 0.16); color: var(--accent); }
 .dp .act-src-seg button:disabled { cursor: default; }
+
+/* Training lists: the sport's best activity (title says why) */
+.best-badge { display: inline-block; flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; vertical-align: 1px;
+  color: oklch(0.85 0.14 85); background: oklch(0.85 0.14 85 / 0.12); border: 1px solid oklch(0.85 0.14 85 / 0.4); }
+@media (max-width: 640px) { .best-badge { padding: 1px 6px; } .best-badge .bb-t { display: none; } }
